@@ -1,0 +1,53 @@
+# .webappignore - Azure App Service deployment exclusions
+# This file controls what gets EXCLUDED during deployment packaging to Azure App Service
+# Uses exclusion-based approach: include everything by default, exclude only unnecessary files
+
+# ============================================================================
+# DEPLOYMENT EXCLUSION APPROACH  
+# ============================================================================
+
+# Development and testing files
+tests/
+docs/
+to_be_deleted/
+.pytest_cache/
+*.pyc
+__pycache__/
+
+# Development environment files
+.env
+.venv/
+venv/
+env/
+.git/
+.gitignore
+.vscode/
+
+# Azure and deployment files not needed in runtime
+.azure/
+.azd/
+infra/
+scripts/
+azure.yaml
+.azdignore
+
+# Documentation and development files
+README.md
+*.md
+requirements-dev.txt
+
+# Temporary and cache files
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+
+# Test files and development artifacts
+clean_environment_detection.py
+test_config_detection.py
+
+# Keep AIPlaygroundCode folder structure but exclude development files within it
+AIPlaygroundCode/*.pyc
+AIPlaygroundCode/__pycache__/
+AIPlaygroundCode/test_*
+AIPlaygroundCode/*.log

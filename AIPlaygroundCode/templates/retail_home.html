@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TechMart - Electronics & More</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8f9fa;
+            line-height: 1.6;
+        }
+        
+        /* TechMart Retail Website Background */
+        .retail-website {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            padding: 0;
+            position: relative;
+        }
+        
+        .retail-header {
+            background: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 15px 0;
+        }
+        
+        .retail-nav {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+        }
+        
+        .retail-logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #1e3c72;
+        }
+        
+        .retail-menu {
+            display: flex;
+            gap: 30px;
+            align-items: center;
+        }
+        
+        .retail-menu a {
+            text-decoration: none;
+            color: #333;
+            font-weight: 500;
+            transition: color 0.3s ease;
+        }
+        
+        .retail-menu a:hover {
+            color: #1e3c72;
+        }
+        
+        .retail-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        
+        .hero-section {
+            text-align: center;
+            color: white;
+            margin-bottom: 60px;
+        }
+        
+        .hero-title {
+            font-size: 48px;
+            font-weight: 700;
+        }
+        
+        .hero-subtitle {
+            font-size: 20px;
+            opacity: 0.9;
+            margin-bottom: 30px;
+        }
+        
+        .product-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 30px;
+            margin-top: 40px;
+        }
+        
+        .product-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            color: #333;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        
+        .product-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+        }
+        
+        .product-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #1e3c72;
+        }
+        
+        .product-price {
+            font-size: 24px;
+            font-weight: bold;
+            color: #28a745;
+            margin-bottom: 15px;
+        }
+        
+        .product-specs {
+            text-align: left;
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 20px;
+        }
+        
+        .buy-btn {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.3s ease;
+            width: 100%;
+        }
+        
+        .buy-btn:hover {
+            background: #2a5298;
+        }
+    </style>
+</head>
+<body>
+    <!-- TechMart Retail Website Background -->
+    <div class="retail-website">
+        <header class="retail-header">
+            <nav class="retail-nav">
+                <div class="retail-logo">🏪 TechMart Enterprise</div>
+                <div class="retail-menu">
+                    <a href="#electronics">Electronics</a>
+                    <a href="#gaming">Gaming</a>
+                    <a href="#laptops">Laptops</a>
+                    <a href="#accessories">Accessories</a>
+                    <a href="#support">Support</a>
+                    <a href="/testing" target="_blank" style="background: #e3f2fd; color: #1976d2; padding: 5px 10px; border-radius: 15px; text-decoration: none; font-weight: bold;">📋 Detailed Interface</a>
+                </div>
+            </nav>
+        </header>
+        
+        <main class="retail-content">
+            <section class="hero-section">
+                <h1 class="hero-title">Welcome to TechMart</h1>
+                <p class="hero-subtitle">Your Premier Destination for Electronics & Technology</p>
+                <p>500+ Stores Globally | 50M+ Customers | $5B Annual Revenue</p>
+            </section>
+            
+            <section class="product-grid">
+                <div class="product-card">
+                    <div class="product-title">TechMart Pro Gaming X1</div>
+                    <div class="product-price">$1,699</div>
+                    <div class="product-specs">
+                        • RTX 4070 Graphics<br>
+                        • Intel i7-13700H Processor<br>
+                        • 16GB RAM + 1TB SSD<br>
+                        • 15.6" 144Hz Display
+                    </div>
+                    <button class="buy-btn">Add to Cart</button>
+                </div>
+                
+                <div class="product-card">
+                    <div class="product-title">UltraGame Elite 15</div>
+                    <div class="product-price">$1,899</div>
+                    <div class="product-specs">
+                        • RTX 4070 Ti Graphics<br>
+                        • AMD Ryzen 9 7900HX<br>
+                        • 32GB RAM + 1TB SSD<br>
+                        • 15.6" 165Hz Display
+                    </div>
+                    <button class="buy-btn">Add to Cart</button>
+                </div>
+                
+                <div class="product-card">
+                    <div class="product-title">PowerBook Gaming Pro</div>
+                    <div class="product-price">$1,549</div>
+                    <div class="product-specs">
+                        • RTX 4060 Graphics<br>
+                        • Intel i5-13600H<br>
+                        • 16GB RAM + 512GB SSD<br>
+                        • 15.6" 120Hz Display
+                    </div>
+                    <button class="buy-btn">Add to Cart</button>
+                </div>
+            </section>
+        </main>
+    </div>
+    
+    <!-- AI Chat Popup -->
+    <style>
+        /* Chat Popup Styles */
+        .chat-popup-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        .chat-toggle-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            padding: 15px 25px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .chat-toggle-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+
+        .chat-popup {
+            position: absolute;
+            bottom: 70px;
+            right: 0;
+            width: 380px;
+            height: 500px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .chat-popup.active {
+            display: flex;
+        }
+
+        .chat-popup-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chat-popup-title {
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        .chat-popup-close {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+
+        .chat-popup-close:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        .chat-popup-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #f8f9fa;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .message.user {
+            align-items: flex-end;
+        }
+
+        .message.assistant {
+            align-items: flex-start;
+        }
+
+        .message-content {
+            max-width: 80%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            word-wrap: break-word;
+            line-height: 1.4;
+        }
+
+        .message.user .message-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .message.assistant .message-content {
+            background: white;
+            color: #333;
+            border: 1px solid #e0e0e0;
+        }
+
+        .chat-popup-input {
+            padding: 15px 20px;
+            background: white;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            gap: 10px;
+        }
+
+        .chat-popup-input input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 1px solid #ddd;
+            border-radius: 25px;
+            outline: none;
+            font-size: 14px;
+        }
+
+        .chat-popup-input input:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+        }
+
+        .chat-popup-input button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s;
+        }
+
+        .chat-popup-input button:hover {
+            transform: scale(1.05);
+        }
+    </style>
+
+    <div class="chat-popup-container">
+        <button class="chat-toggle-btn" id="chat-toggle">
+            🤖 AI Assistant
+        </button>
+        
+        <div class="chat-popup" id="chat-popup">
+            <div class="chat-popup-header">
+                <div class="chat-popup-title">🤖 AI Assistant</div>
+                <button class="chat-popup-close" id="chat-close">×</button>
+            </div>
+            
+            <div class="chat-popup-messages" id="chat-messages">
+                {% if conversation %}
+                    {% for message in conversation %}
+                    <div class="message {{ message.role }}">
+                        <div class="message-content">{{ message.content | markdown | safe }}</div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="message assistant">
+                        <div class="message-content">👋 Hello! I'm your AI assistant. How can I help you today?</div>
+                    </div>
+                {% endif %}
+            </div>
+            
+            <form method="POST" class="chat-popup-input" id="chat-form">
+                <input type="text" 
+                       name="message" 
+                       id="chat-input"
+                       placeholder="Type your message..." 
+                       required 
+                       autocomplete="off">
+                <button type="submit">➤</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Chat popup functionality
+        const chatToggle = document.getElementById('chat-toggle');
+        const chatPopup = document.getElementById('chat-popup');
+        const chatClose = document.getElementById('chat-close');
+        const chatInput = document.getElementById('chat-input');
+        const chatMessages = document.getElementById('chat-messages');
+
+        let isOpen = localStorage.getItem('chatPopupOpen') === 'true';
+
+        function toggleChat() {
+            isOpen = !isOpen;
+            localStorage.setItem('chatPopupOpen', isOpen);
+            if (isOpen) {
+                chatPopup.classList.add('active');
+                // Auto-focus input when opening
+                setTimeout(() => chatInput.focus(), 300);
+            } else {
+                chatPopup.classList.remove('active');
+            }
+        }
+
+        // Restore popup state on page load
+        function restorePopupState() {
+            if (isOpen) {
+                chatPopup.classList.add('active');
+            } else {
+                chatPopup.classList.remove('active');
+            }
+        }
+
+        // Initialize popup state when page loads
+        window.addEventListener('load', restorePopupState);
+
+        // Also restore state immediately
+        restorePopupState();
+
+        // Toggle chat popup
+        chatToggle.addEventListener('click', toggleChat);
+        chatClose.addEventListener('click', toggleChat);
+
+        // Close popup when clicking outside (but not on form elements)
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.chat-popup-container') && 
+                !e.target.closest('form') && 
+                !e.target.matches('button[type="submit"]')) {
+                chatPopup.classList.remove('active');
+                localStorage.setItem('chatPopupOpen', 'false');
+                isOpen = false;
+            }
+        });
+
+        // Handle Enter key
+        chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                if (chatInput.value.trim()) {
+                    document.getElementById('chat-form').submit();
+                }
+            }
+        });
+
+        // Auto-scroll to bottom on page load if there are messages
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(() => chatMessages.scrollTop = chatMessages.scrollHeight, 100);
+        });
+    </script>
+</body>
+</html>

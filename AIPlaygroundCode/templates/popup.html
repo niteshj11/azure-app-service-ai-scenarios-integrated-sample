@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Chat Interface</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8f9fa;
+            line-height: 1.6;
+            padding: 20px;
+        }
+        
+        .simple-page {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        p {
+            color: #666;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        
+        .demo-content {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 10px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        /* Chat Popup Styles */
+        .chat-popup-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        .chat-toggle-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            padding: 15px 25px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .chat-toggle-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+
+        .chat-popup {
+            position: absolute;
+            bottom: 70px;
+            right: 0;
+            width: 380px;
+            height: 500px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .chat-popup.active {
+            display: flex;
+        }
+
+        .chat-popup-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chat-popup-title {
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        .chat-popup-close {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+
+        .chat-popup-close:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        .chat-popup-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #f8f9fa;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            max-width: 85%;
+        }
+
+        .message.user {
+            margin-left: auto;
+        }
+
+        .message.assistant {
+            margin-right: auto;
+        }
+
+        .message-content {
+            background: white;
+            padding: 12px 16px;
+            border-radius: 18px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        .message.user .message-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .welcome-message {
+            text-align: center;
+            color: #666;
+            font-style: italic;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+
+        .chat-popup-input {
+            padding: 15px 20px;
+            background: white;
+            border-top: 1px solid #eee;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .chat-input {
+            flex: 1;
+            border: 1px solid #ddd;
+            border-radius: 25px;
+            padding: 12px 16px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .chat-input:focus {
+            border-color: #667eea;
+        }
+
+        .send-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s;
+        }
+
+        .send-btn:hover {
+            transform: scale(1.05);
+        }
+
+        /* File upload styles */
+        .file-upload-section {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .file-btn {
+            background: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            transition: all 0.2s;
+        }
+
+        .file-btn:hover {
+            background: #e9ecef;
+            transform: scale(1.05);
+        }
+
+        .file-name {
+            font-size: 12px;
+            color: #666;
+            max-width: 100px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .clear-file-btn {
+            background: #ff4757;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .clear-file-btn:hover {
+            background: #ff3742;
+        }
+
+        /* Responsive design */
+        @media (max-width: 480px) {
+            .chat-popup {
+                width: calc(100vw - 40px);
+                height: calc(100vh - 140px);
+            }
+        }
+
+        .loading-indicator {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="simple-page">
+        <h1>🤖 AI Chat Interface Demo</h1>
+        <p>This is a simple demo page showing how the AI chat popup works.</p>
+        <p>Click the chat button in the bottom-right corner to start a conversation!</p>
+        
+        <div class="demo-content">
+            <h2>Your Website Content Goes Here</h2>
+            <p>This AI chat popup can be added to any website or application.</p>
+            <p>The popup appears as a floating button and expands into a full chat interface.</p>
+        </div>
+    </div>
+
+    <!-- Chat Popup -->
+    <div class="chat-popup-container">
+        <button class="chat-toggle-btn" id="chat-toggle">
+            🤖 AI Assistant
+        </button>
+        
+        <div class="chat-popup" id="chat-popup">
+            <div class="chat-popup-header">
+                <div class="chat-popup-title">🤖 AI Assistant</div>
+                <button class="chat-popup-close" id="chat-close">×</button>
+            </div>
+            
+            <div class="chat-popup-messages" id="chat-messages">
+                <div class="welcome-message">
+                    👋 Hello! I'm your AI assistant. I can help with:
+                    <br><br>
+                    • Answering questions<br>
+                    • Providing information<br>
+                    • General assistance<br>
+                    <br>
+                    How can I help you today?
+                </div>
+                
+                {% for message in conversation %}
+                <div class="message {{ message.role }}">
+                    <div class="message-content">{{ message.content | markdown | safe }}</div>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <form method="POST" class="chat-popup-input" id="chat-form" enctype="multipart/form-data">
+                <div class="input-group">
+                    <input type="text" 
+                           name="message" 
+                           class="chat-input" 
+                           id="chat-input"
+                           placeholder="Type your message..." 
+                           required 
+                           autocomplete="off">
+                    
+                    <!-- File upload section -->
+                    <div class="file-upload-section" id="file-upload-section">
+                        <input type="file" 
+                               name="file" 
+                               id="file-input"
+                               accept=".jpg,.jpeg,.png,.gif,.bmp,.webp,.mp3,.wav,.m4a,.ogg"
+                               style="display: none;">
+                        <button type="button" class="file-btn" id="file-btn" title="Attach Image or Audio">
+                            📎
+                        </button>
+                        <span class="file-name" id="file-name"></span>
+                        <button type="button" class="clear-file-btn" id="clear-file-btn" style="display: none;" title="Remove attachment">
+                            ✖
+                        </button>
+                    </div>
+                    
+                    <button type="submit" class="send-btn">
+                        ➤
+                    </button>
+                </div>
+            </form>
+            
+            <div class="loading-indicator" id="loading">
+                🤖 AI is thinking...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Chat popup functionality
+        const chatToggle = document.getElementById('chat-toggle');
+        const chatPopup = document.getElementById('chat-popup');
+        const chatClose = document.getElementById('chat-close');
+        const chatForm = document.getElementById('chat-form');
+        const chatInput = document.getElementById('chat-input');
+        const chatMessages = document.getElementById('chat-messages');
+        const loading = document.getElementById('loading');
+        
+        // File upload elements
+        const fileInput = document.getElementById('file-input');
+        const fileBtn = document.getElementById('file-btn');
+        const fileName = document.getElementById('file-name');
+        const clearFileBtn = document.getElementById('clear-file-btn');
+
+        // Toggle chat popup
+        chatToggle.addEventListener('click', () => {
+            chatPopup.classList.add('active');
+            chatInput.focus();
+        });
+
+        // Close chat popup
+        chatClose.addEventListener('click', () => {
+            chatPopup.classList.remove('active');
+        });
+
+        // Close popup when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.chat-popup-container')) {
+                chatPopup.classList.remove('active');
+            }
+        });
+
+        // File upload functionality
+        fileBtn.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                fileName.textContent = file.name;
+                fileName.style.display = 'inline';
+                clearFileBtn.style.display = 'flex';
+            }
+        });
+
+        clearFileBtn.addEventListener('click', () => {
+            fileInput.value = '';
+            fileName.textContent = '';
+            fileName.style.display = 'none';
+            clearFileBtn.style.display = 'none';
+        });
+
+        // Handle form submission
+        chatForm.addEventListener('submit', (e) => {
+            const message = chatInput.value.trim();
+            if (!message) return;
+
+            // Check for file attachment
+            const file = fileInput.files[0];
+            let displayMessage = message;
+            if (file) {
+                const fileType = file.type.startsWith('image/') ? 'Image' : 
+                               file.type.startsWith('audio/') ? 'Audio' : 'File';
+                displayMessage += `\n\n📎 ${fileType}: ${file.name}`;
+            }
+
+            // Add user message to chat
+            addMessage('user', displayMessage);
+            chatInput.value = '';
+            
+            // Clear file after sending
+            if (file) {
+                clearFileBtn.click();
+            }
+            
+            // Show loading indicator
+            loading.style.display = 'flex';
+            
+            // Scroll to bottom
+            setTimeout(() => {
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }, 100);
+        });
+
+        // Add message to chat
+        function addMessage(role, content) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${role}`;
+            messageDiv.innerHTML = `<div class="message-content">${content}</div>`;
+            
+            // Insert before loading indicator
+            const loadingElement = document.getElementById('loading');
+            chatMessages.insertBefore(messageDiv, loadingElement);
+            
+            // Scroll to bottom
+            setTimeout(() => {
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }, 100);
+        }
+
+        // Auto-focus chat input when popup opens
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+                    if (chatPopup.classList.contains('active')) {
+                        setTimeout(() => chatInput.focus(), 100);
+                    }
+                }
+            });
+        });
+        observer.observe(chatPopup, { attributes: true });
+
+        // Handle Enter key in input
+        chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                chatForm.dispatchEvent(new Event('submit'));
+            }
+        });
+    </script>
+</body>
+</html>

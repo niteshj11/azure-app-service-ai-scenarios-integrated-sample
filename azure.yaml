@@ -1,0 +1,15 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+
+name: techmart-ai-chatbot
+metadata:
+  template: techmart-ai-chatbot@0.0.1-beta
+
+services:
+  api:
+    host: appservice
+    project: ./
+    language: python
+
+infra:
+  provider: bicep
+  path: infra

@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - Azure AI Chatbot</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #0078d4, #005a9e);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            margin-bottom: 10px;
+            font-size: 2em;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+        
+        .nav-links {
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            text-align: center;
+            margin-top: 20px;
+        }
+        
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            padding: 8px 16px;
+            margin: 0 10px;
+            border-radius: 6px;
+            background: rgba(255,255,255,0.2);
+            transition: all 0.3s;
+        }
+        
+        .nav-links a:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        .content {
+            padding: 40px;
+        }
+        
+        .form-group {
+            margin-bottom: 25px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+            font-size: 14px;
+        }
+        
+        .form-group input, .form-group textarea, .form-group select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: border-color 0.3s;
+        }
+        
+        .form-group input:focus, .form-group textarea:focus, .form-group select:focus {
+            outline: none;
+            border-color: #0078d4;
+        }
+        
+        .form-group textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+        
+        .form-group .help-text {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+            line-height: 1.4;
+        }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #0078d4, #005a9e);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,120,212,0.3);
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+        
+        .btn-test {
+            background: #28a745;
+            color: white;
+            margin-left: 10px;
+        }
+        
+        .btn-test:hover {
+            background: #218838;
+        }
+        
+        .message {
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+            font-weight: 500;
+        }
+        
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .config-preview {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 25px 0;
+            border-left: 4px solid #0078d4;
+        }
+        
+        .config-preview h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+        
+        .config-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .config-item:last-child {
+            border-bottom: none;
+        }
+        
+        .config-item .label {
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        .config-item .value {
+            color: #6c757d;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            max-width: 300px;
+            word-break: break-all;
+        }
+        
+        .examples {
+            background: #fff3cd;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 25px 0;
+            border-left: 4px solid #ffc107;
+        }
+        
+        .examples h4 {
+            margin-bottom: 10px;
+            color: #856404;
+        }
+        
+        .examples ul {
+            margin-left: 20px;
+            color: #856404;
+        }
+        
+        .examples li {
+            margin-bottom: 5px;
+        }
+        
+        .examples code {
+            background: rgba(0,0,0,0.1);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+        }
+        
+        /* Checkbox styling */
+        .checkbox-group {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        
+        .checkbox-group input[type="checkbox"] {
+            width: auto;
+            margin: 0;
+            flex-shrink: 0;
+            margin-top: 2px; /* Align with text baseline */
+        }
+        
+        .checkbox-group .checkbox-label {
+            font-weight: 600;
+            color: #333;
+            font-size: 14px;
+            line-height: 1.4;
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⚙️ Settings</h1>
+            <p>Configure your Azure AI Foundry connection</p>
+            <div class="nav-links">
+                <a href="/">🏠 Chat</a>
+                <a href="/settings">⚙️ Settings</a>
+            </div>
+        </div>
+        
+        <div class="content">
+            {% if message %}
+                <div class="message {{ message.type }}">
+                    {{ message.text }}
+                </div>
+            {% endif %}
+            
+            <form method="POST">
+                <div class="form-group">
+                    <label for="endpoint">Azure AI Foundry Endpoint *</label>
+                    <input type="url" 
+                           id="endpoint" 
+                           name="endpoint" 
+                           value="{{ config.endpoint }}" 
+                           placeholder="https://your-endpoint.services.ai.azure.com/models"
+                           required>
+                    <div class="help-text">
+                        Your Azure AI Foundry endpoint URL. This should end with <code>/models</code>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="api_key">API Key *</label>
+                    <input type="password" 
+                           id="api_key" 
+                           name="api_key" 
+                           value="{{ config.api_key }}" 
+                           placeholder="Your Azure AI Foundry API key"
+                           required>
+                    <div class="help-text">
+                        Your Azure AI Foundry API key. Keep this secure and never share it publicly.
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="model">Model Name *</label>
+                        <input type="text" 
+                               id="model" 
+                               name="model" 
+                               value="{{ config.model }}" 
+                               placeholder="gpt-4o-mini"
+                               required>
+                        <div class="help-text">
+                            The model deployment name for chat and text processing
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="audio_model">Model Name (Audio)</label>
+                        <input type="text" 
+                               id="audio_model" 
+                               name="audio_model" 
+                               value="{{ config.audio_model }}" 
+                               placeholder="gpt-4o-mini-audio-preview">
+                        <div class="help-text">
+                            The model deployment name for audio processing and transcription
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="max_tokens">Max Tokens</label>
+                    <input type="number" 
+                           id="max_tokens" 
+                           name="max_tokens" 
+                           value="{{ config.max_tokens }}" 
+                           min="1" 
+                           max="4000" 
+                           placeholder="1000">
+                    <div class="help-text">
+                        Maximum tokens in the response (1-4000)
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="temperature">Temperature</label>
+                    <input type="number" 
+                           id="temperature" 
+                           name="temperature" 
+                           value="{{ config.temperature }}" 
+                           min="0" 
+                           max="1" 
+                           step="0.1" 
+                           placeholder="0.7">
+                    <div class="help-text">
+                        Controls randomness: 0 = deterministic, 1 = very creative (0.0-1.0)
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="system_message">System Message</label>
+                    <textarea id="system_message" 
+                              name="system_message" 
+                              placeholder="You are a helpful AI assistant...">{{ config.system_message }}</textarea>
+                    <div class="help-text">
+                        Instructions that define the AI's behavior and personality
+                    </div>
+                </div>
+                
+                <!-- Advanced Features Section -->
+                <div style="margin: 40px 0; padding: 20px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #28a745;">
+                    <h3 style="margin-bottom: 20px; color: #333;">🚀 Advanced Features</h3>
+                    
+                    <!-- Multimodal Settings -->
+                    <div class="form-group">
+                        <div class="checkbox-group">
+                            <input type="checkbox" 
+                                   id="enable_multimodal" 
+                                   name="enable_multimodal" 
+                                   {% if config.enable_multimodal %}checked{% endif %}>
+                            <label for="enable_multimodal" class="checkbox-label">
+                                Enable Multimodal (Image & Audio)
+                            </label>
+                        </div>
+                        <div class="help-text">
+                            Allow image and audio uploads in chat. Requires multimodal-capable models like gpt-4o, gpt-4-vision, or Phi-4-multimodal-instruct.
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="max_image_size">Max Image Size (MB)</label>
+                            <input type="number" 
+                                   id="max_image_size" 
+                                   name="max_image_size" 
+                                   value="{{ config.max_image_size or 5 }}" 
+                                   min="1" 
+                                   max="20" 
+                                   placeholder="5">
+                            <div class="help-text">
+                                Maximum image file size allowed (1-20 MB)
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="max_audio_size">Max Audio Size (MB)</label>
+                            <input type="number" 
+                                   id="max_audio_size" 
+                                   name="max_audio_size" 
+                                   value="{{ config.max_audio_size or 10 }}" 
+                                   min="1" 
+                                   max="50" 
+                                   placeholder="10">
+                            <div class="help-text">
+                                Maximum audio file size allowed (1-50 MB)
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Reasoning Model Settings -->
+                    <div class="form-group">
+                        <div class="checkbox-group">
+                            <input type="checkbox" 
+                                   id="enable_reasoning" 
+                                   name="enable_reasoning" 
+                                   {% if config.enable_reasoning %}checked{% endif %}>
+                            <label for="enable_reasoning" class="checkbox-label">
+                                Enable Reasoning Models
+                            </label>
+                        </div>
+                        <div class="help-text">
+                            Use advanced reasoning capabilities. Works with reasoning models like deepseek-r1, o1-mini, o1-preview.
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="reasoning_effort">Reasoning Effort</label>
+                            <select id="reasoning_effort" name="reasoning_effort">
+                                <option value="low" {% if config.reasoning_effort == 'low' %}selected{% endif %}>Low</option>
+                                <option value="medium" {% if config.reasoning_effort == 'medium' or not config.reasoning_effort %}selected{% endif %}>Medium</option>
+                                <option value="high" {% if config.reasoning_effort == 'high' %}selected{% endif %}>High</option>
+                            </select>
+                            <div class="help-text">
+                                How much reasoning effort the model should use (affects response time and quality)
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <div class="checkbox-group">
+                                <input type="checkbox" 
+                                       id="show_reasoning" 
+                                       name="show_reasoning" 
+                                       {% if config.show_reasoning %}checked{% endif %}>
+                                <label for="show_reasoning" class="checkbox-label">
+                                    Show Reasoning Process
+                                </label>
+                            </div>
+                            <div class="help-text">
+                                Display the model's reasoning steps in the chat interface
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Structured Output Settings -->
+                    <div class="form-group">
+                        <div class="checkbox-group">
+                            <input type="checkbox" 
+                                   id="enable_structured_output" 
+                                   name="enable_structured_output" 
+                                   {% if config.enable_structured_output %}checked{% endif %}>
+                            <label for="enable_structured_output" class="checkbox-label">
+                                Enable Structured Outputs
+                            </label>
+                        </div>
+                        <div class="help-text">
+                            Force responses to follow specific JSON schemas. Useful for data extraction and structured content generation.
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="response_format">Response Format</label>
+                        <select id="response_format" name="response_format">
+                            <option value="text" {% if config.response_format == 'text' or not config.response_format %}selected{% endif %}>Text</option>
+                            <option value="json_object" {% if config.response_format == 'json_object' %}selected{% endif %}>JSON Object</option>
+                            <option value="json_schema" {% if config.response_format == 'json_schema' %}selected{% endif %}>JSON Schema</option>
+                        </select>
+                        <div class="help-text">
+                            Format for model responses: Text (default), JSON Object, or Strict JSON Schema
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="json_schema">JSON Schema (for structured output)</label>
+                        <textarea id="json_schema" 
+                                  name="json_schema" 
+                                  rows="6"
+                                  placeholder='{"type": "object", "properties": {"answer": {"type": "string"}, "confidence": {"type": "number"}}, "required": ["answer"]}'>{{ config.json_schema }}</textarea>
+                        <div class="help-text">
+                            JSON schema definition for structured responses (only used when Response Format is "JSON Schema")
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="schema_name">Schema Name</label>
+                        <input type="text" 
+                               id="schema_name" 
+                               name="schema_name" 
+                               value="{{ config.schema_name or 'Response' }}" 
+                               placeholder="Response">
+                        <div class="help-text">
+                            Name for the JSON schema (used when Response Format is "JSON Schema")
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="text-align: center; margin-top: 30px;">
+                    <button type="submit" class="btn btn-primary">💾 Save Settings</button>
+                    <button type="button" class="btn btn-test" onclick="testConfiguration()">🧪 Test Config</button>
+                    <a href="/" class="btn btn-secondary">❌ Cancel</a>
+                </div>
+            </form>
+            
+            <div class="config-preview">
+                <h3>📋 Current Configuration</h3>
+                <div class="config-item">
+                    <span class="label">Endpoint:</span>
+                    <span class="value">{{ config.endpoint }}</span>
+                </div>
+                <div class="config-item">
+                    <span class="label">API Key:</span>
+                    <span class="value">{{ '●' * 20 if config.api_key else 'Not set' }}</span>
+                </div>
+                <div class="config-item">
+                    <span class="label">Model:</span>
+                    <span class="value">{{ config.model }}</span>
+                </div>
+                <div class="config-item">
+                    <span class="label">Audio Model:</span>
+                    <span class="value">{{ config.audio_model }}</span>
+                </div>
+                <div class="config-item">
+                    <span class="label">Max Tokens:</span>
+                    <span class="value">{{ config.max_tokens }}</span>
+                </div>
+                <div class="config-item">
+                    <span class="label">Temperature:</span>
+                    <span class="value">{{ config.temperature }}</span>
+                </div>
+                <div class="config-item">
+                    <span class="label">Multimodal:</span>
+                    <span class="value">{{ '✅ Enabled' if config.enable_multimodal else '❌ Disabled' }}</span>
+                </div>
+                <div class="config-item">
+                    <span class="label">Reasoning:</span>
+                    <span class="value">{{ '✅ ' + (config.reasoning_effort or 'Medium') + ' effort' if config.enable_reasoning else '❌ Disabled' }}</span>
+                </div>
+                <div class="config-item">
+                    <span class="label">Structured Output:</span>
+                    <span class="value">{{ '✅ ' + (config.response_format or 'text') if config.enable_structured_output else '❌ Disabled' }}</span>
+                </div>
+            </div>
+            
+            <div class="examples">
+                <h4>💡 Model Examples by Capability</h4>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-top: 15px;">
+                    <div>
+                        <strong>🔤 Text Models:</strong>
+                        <ul style="margin-top: 5px;">
+                            <li><code>gpt-4o-mini</code> - Fast and efficient</li>
+                            <li><code>gpt-4o</code> - Most capable GPT</li>
+                            <li><code>claude-3-5-sonnet-20241022</code> - Anthropic's Claude</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <strong>🖼️ Multimodal Models:</strong>
+                        <ul style="margin-top: 5px;">
+                            <li><code>gpt-4o</code> - Images and audio</li>
+                            <li><code>gpt-4-vision-preview</code> - Images only</li>
+                            <li><code>phi-4-multimodal-instruct</code> - Images and audio</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <strong>🧠 Reasoning Models:</strong>
+                        <ul style="margin-top: 5px;">
+                            <li><code>deepseek-r1</code> - DeepSeek reasoning</li>
+                            <li><code>o1-mini</code> - OpenAI reasoning</li>
+                            <li><code>o1-preview</code> - Advanced reasoning</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <strong>📋 Structured Output:</strong>
+                        <ul style="margin-top: 5px;">
+                            <li><code>gpt-4o-2024-08-06</code> - JSON Schema</li>
+                            <li><code>gpt-4-1106-preview</code> - JSON Mode</li>
+                            <li><code>gpt-3.5-turbo-1106</code> - Basic JSON</li>
+                        </ul>
+                    </div>
+                </div>
+                <p style="margin-top: 15px; font-size: 13px;">
+                    <strong>Note:</strong> Available models depend on your Azure AI Foundry subscription. 
+                    Check your Azure portal for exact model names and capabilities.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function testConfiguration() {
+            const testBtn = event.target;
+            const originalText = testBtn.textContent;
+            
+            // Validate required fields before testing
+            const endpoint = document.getElementById('endpoint').value.trim();
+            const apiKey = document.getElementById('api_key').value.trim();
+            
+            if (!endpoint || !apiKey) {
+                alert('❌ Please fill in both Azure endpoint and API key before testing the configuration.');
+                return;
+            }
+            
+            testBtn.textContent = '🧪 Testing...';
+            testBtn.disabled = true;
+            
+            fetch('/test_config', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    alert(`✅ ${data.message}\n\nModel: ${data.model}\nResponse: ${data.response}`);
+                } else {
+                    alert(`❌ ${data.message}`);
+                }
+            })
+            .catch(error => {
+                console.error('Error testing config:', error);
+                alert('❌ Failed to test configuration. Please try again.');
+            })
+            .finally(() => {
+                testBtn.textContent = originalText;
+                testBtn.disabled = false;
+            });
+        }
+        
+        function validateForm() {
+            const endpoint = document.getElementById('endpoint').value.trim();
+            const apiKey = document.getElementById('api_key').value.trim();
+            
+            if (!endpoint || !apiKey) {
+                alert('❌ Azure endpoint and API key are required for the chatbot to function.');
+                return false;
+            }
+            
+            // Validate endpoint format
+            if (!endpoint.startsWith('https://') || !endpoint.includes('.ai.azure.com')) {
+                if (!confirm('⚠️ The endpoint URL doesn\'t look like a typical Azure AI Foundry endpoint. Continue anyway?')) {
+                    return false;
+                }
+            }
+            
+            return true;
+        }
+        
+        // Auto-focus on first empty field and add form validation
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.querySelector('form');
+            const inputs = document.querySelectorAll('input[required]');
+            
+            // Add form validation
+            form.addEventListener('submit', function(e) {
+                if (!validateForm()) {
+                    e.preventDefault();
+                }
+            });
+            
+            // Auto-focus on first empty required field
+            for (let input of inputs) {
+                if (!input.value) {
+                    input.focus();
+                    break;
+                }
+            }
+            
+            // Add real-time validation feedback
+            document.getElementById('endpoint').addEventListener('blur', function() {
+                const value = this.value.trim();
+                if (value && !value.startsWith('https://')) {
+                    this.style.borderColor = '#dc3545';
+                    this.title = 'Endpoint should start with https://';
+                } else {
+                    this.style.borderColor = '';
+                    this.title = '';
+                }
+            });
+        });
+    </script>
+</body>
+</html>

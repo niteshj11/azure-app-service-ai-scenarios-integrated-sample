@@ -1,0 +1,30 @@
+# .azdignore - Template initialization inclusions
+# This file controls what gets INCLUDED when someone runs 'azd init' from this template
+# Uses inclusion-only approach: exclude everything, then selectively include ONLY what's needed to run the application
+# Note: This does NOT control packaging - that's handled by .webappignore
+
+# ============================================================================
+# RUNTIME-ESSENTIAL INCLUSION APPROACH
+# ============================================================================
+
+# 1. Exclude everything by default
+*
+
+# 2. Include ONLY files essential for application runtime
+!requirements.txt
+!app.py
+!wsgi.py
+!AIPlaygroundCode/config.py
+!AIPlaygroundCode/settings.json
+
+# 3. Include ONLY directories essential for application runtime
+!AIPlaygroundCode/
+!AIPlaygroundCode/**
+!AIPlaygroundCode/scenarios/
+!AIPlaygroundCode/scenarios/**
+!AIPlaygroundCode/utils/
+!AIPlaygroundCode/utils/**
+!AIPlaygroundCode/templates/
+!AIPlaygroundCode/templates/**
+!AIPlaygroundCode/config/
+!AIPlaygroundCode/config/**

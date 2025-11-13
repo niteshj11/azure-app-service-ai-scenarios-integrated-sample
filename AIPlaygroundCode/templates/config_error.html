@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuration Required - Azure AI Chatbot</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .error-container {
+            max-width: 600px;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        
+        .error-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+        }
+        
+        h1 {
+            color: #e74c3c;
+            margin-bottom: 20px;
+        }
+        
+        .error-message {
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+        
+        .config-steps {
+            background: #f8f9ff;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            text-align: left;
+        }
+        
+        .config-steps h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+        }
+        
+        .config-steps ol {
+            padding-left: 20px;
+        }
+        
+        .config-steps li {
+            margin-bottom: 10px;
+            color: #555;
+        }
+        
+        .code {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="error-container">
+        <div class="error-icon">⚙️</div>
+        <h1>Azure Configuration Required</h1>
+        
+        <div class="error-message">
+            <p>The Azure AI chatbot needs to be configured before use. Please set up your Azure AI credentials to continue.</p>
+        </div>
+        
+        <div class="config-steps">
+            <h3>Configuration Steps:</h3>
+            <ol>
+                <li>Go to the <strong>Settings</strong> page</li>
+                <li>Get your Azure AI Foundry endpoint and API key from Azure portal</li>
+                <li>Enter your Azure AI Foundry endpoint URL</li>
+                <li>Enter your API key</li>
+                <li>Configure your preferred model settings</li>
+                <li>Save configuration</li>
+            </ol>
+        </div>
+        
+        <div style="text-align: center; margin: 30px 0;">
+            <a href="/settings" style="background: #0078d4; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">
+                Configure Settings
+            </a>
+        </div>
+        
+        <div class="config-steps">
+            <h3>Azure AI Foundry Endpoint Format:</h3>
+            <div class="code">
+https://your-endpoint.cognitiveservices.azure.com/
+            </div>
+        </div>
+        
+        <p style="margin-top: 20px; color: #7f8c8d;">
+            <small>This is a sample application for Azure Linux App Service customers to learn AI integration patterns.</small>
+        </p>
+    </div>
+</body>
+</html>

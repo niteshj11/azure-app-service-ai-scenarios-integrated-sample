@@ -18,7 +18,9 @@ This sample application demonstrates how to implement various AI scenarios on Az
 - [Azure CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli) installed
 - [Azure Developer CLI (azd)](https://docs.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd) installed
 - Azure subscription with contributor access
-- [Azure AI Foundry](https://ai.azure.com) access with model deployments
+- [Azure AI Foundry](https://ai.azure.com) access with **two model deployments**:
+  - **Chat/Reasoning/Image model**: `gpt-4o-mini` or similar for conversational AI, reasoning, and image analysis
+  - **Audio model**: `gpt-4o-mini-audio-preview` or similar for audio transcription and processing
 
 ### One-Command Deployment
 
@@ -29,31 +31,40 @@ This sample application demonstrates how to implement various AI scenarios on Az
    azd up
    ```
 
-2. **Configure AI Settings**
-   After deployment, open `https://[your-app-name].azurewebsites.net/settings` and configure:
-   - ✅ **Azure AI Endpoint**: Your Azure AI Foundry endpoint URL  
-   - ✅ **API Key**: Your Azure AI Foundry API key
-   - ✅ **Model Name**: Your deployed model (e.g., `gpt-4o-mini`)
-   - ✅ **Model Name (Audio)**: Your audio model (e.g., `gpt-4o-mini-audio-preview`)
+2. **Configure AI Settings During Deployment**
+   During `azd up`, you'll be prompted to configure AI setup:
+   
+   **AI Setup Choice**: Choose between:
+   - **`new`**: Creates new Azure AI services automatically (recommended for testing)
+   - **`existing`**: Use your existing Azure AI Foundry project
+   
+   **If you choose `existing`, you'll be prompted for**:
+   - **AI Foundry Endpoint**: Enter your project endpoint (e.g., `https://myproject.openai.azure.com/`)
+   - **Chat Model Name**: Your chat deployment name (e.g., `gpt-4o-mini`)
+   - **Audio Model Name**: Your audio deployment name (e.g., `gpt-4o-mini-audio-preview`)
+   
+   **Configuration is automatic** - no manual settings page needed!
 
 3. **Test Your Application**
    - Click "🧪 Test Config" to verify connection, then start using AI scenarios!
    - Refer to Usage Examples section below to test manually with sample scenarios
 
 ### What Gets Deployed
-- ✅ **Azure App Service** (Basic B1 SKU) with Python 3.11 - Estimated cost: ~$13/month
-- ✅ **Azure Key Vault** (Standard tier) for secure credential storage - Estimated cost: ~$0.03/month  
+- ✅ **Azure App Service** (Basic B2 SKU) with Python 3.11 - Estimated cost: ~$27/month
 - ✅ **Managed Identity** with proper RBAC permissions - No additional cost
-- ✅ **Application Insights** (Pay-as-you-go) for monitoring - Estimated cost: ~$2/month for typical usage
-- ✅ All necessary Azure resources configured automatically
-
-**Total estimated monthly cost: ~$15/month** (costs may vary based on usage and region)
+- ✅ **Azure AI Foundry resources** (if `new` option chosen):
+  - AI Services account with model deployments
+  - AI Project workspace
+  - Storage account for AI project data
+- ✅ All necessary Azure resources configured automatically with environment variables
 
 ## 🖥️ Local Development Setup
 
 ### Prerequisites
 - Python 3.8+ 
-- [Azure AI Foundry](https://ai.azure.com) access with model deployments
+- [Azure AI Foundry](https://ai.azure.com) access with **two model deployments**:
+  - **Chat/Reasoning/Image model**: `gpt-4o-mini` or similar for conversational AI, reasoning, and image analysis
+  - **Audio model**: `gpt-4o-mini-audio-preview` or similar for audio transcription and processing
 
 ### Installation & Setup
 
@@ -70,7 +81,7 @@ This sample application demonstrates how to implement various AI scenarios on Az
 3. **Configure AI Settings**
    Open http://localhost:5000/settings and configure:
    - ✅ **Azure AI Endpoint**: `https://your-endpoint.services.ai.azure.com/models`
-   - ✅ **API Key**: Your Azure AI Foundry API key  
+   - ✅ **API Key**: Your Azure AI Foundry API key *(Note: For production, use Managed Identity instead)*
    - ✅ **Model Name**: Your deployed model name (e.g., `gpt-4o-mini`)
    - ✅ **Model Name (Audio)**: Your audio model (e.g., `gpt-4o-mini-audio-preview`)
 
@@ -80,6 +91,10 @@ This sample application demonstrates how to implement various AI scenarios on Az
 
 ## 💡 Usage Examples
 
+*[Screenshot placeholder: Add application screenshot showing the main interface]*
+
+**Getting Started**: Click the floating 🤖 AI chat button (bottom-right corner) to open the AI chat interface, then try these examples:
+
 **🤖 Conversational AI**: 
 - **Test Message**: "Who are you and what can you help with?"
 - **Expected Response**: AI identifies as TechMart Enterprise AI Assistant, explains customer service and business intelligence capabilities
@@ -88,37 +103,94 @@ This sample application demonstrates how to implement various AI scenarios on Az
 - **Test Message**: "Tell me about features and price for Pro Gaming X1" 
 - **Expected Response**: Details about $1699 price, RTX 4070, Intel i7, 16GB RAM, 1TB SSD specifications
 
-**� Customer Service**:
+**📞 Customer Service**:
 - **Test Message**: "What is TechMart's return policy and how do I process a customer refund?"
 - **Expected Response**: 30-day return policy, receipt requirements, customer service contact information
 
 **🎭 Multimodal Processing**: 
-- **Image Analysis**: Upload product images from `tests/test_inputs/laptop.jpeg` for detailed specifications
-- **Audio Processing**: Upload audio files from `tests/test_inputs/test_customer_service_audio.mp3` for transcription
+- **Image Analysis**: 
+  - **Test Message**: "Analyze this laptop and tell me its specifications"
+  - **Action**: Upload product images from `tests/test_inputs/laptop.jpeg` using the 📎 button
+  - **Expected Response**: Detailed analysis of laptop specifications, features, and condition
+- **Audio Processing**: 
+  - **Test Message**: "Transcribe this customer service call"
+  - **Action**: Upload audio files from `tests/test_inputs/test_customer_service_audio.mp3` using the 📎 button
+  - **Expected Response**: Accurate transcription with customer service context analysis
 
 **Sample Test Files Available**: Browse `tests/test_inputs/` folder for sample images and audio files to test multimodal capabilities.
 
-## 🎯 Easy Integration for Existing Apps
+## 🎯 Integration with Existing Applications
 
-**Step 1: Copy Required Files**
+This section provides guidance for integrating AI capabilities into your existing Flask applications. Note that this requires additional Azure resource setup and dependency management.
+
+### Prerequisites for Integration
+- Existing Flask application with Azure App Service and App Service Plan
+- Azure AI Foundry access with model deployments
+- Managed Identity configured for App Service to access Azure AI Foundry endpoints
+
+### Step 1: Set Up Azure Resources
+
+**Configure App Service Managed Identity:**
 ```bash
-# Copy the AIPlaygroundCode folder to your existing Flask app
-cp -r AIPlaygroundCode/ /path/to/your-existing-app/
+# Enable system-assigned managed identity for your App Service
+az webapp identity assign --name <your-app-name> --resource-group <your-rg>
 
-# Copy requirements.txt and wsgi.py if they don't exist in your app
-cp requirements.txt /path/to/your-existing-app/  # If not already present
-cp wsgi.py /path/to/your-existing-app/          # If not already present  
+# Grant Azure AI Developer role to your App Service for existing AI Foundry resources
+az role assignment create \
+  --role "Cognitive Services OpenAI User" \
+  --assignee <managed-identity-principal-id> \
+  --scope <your-ai-foundry-resource-id>
 ```
 
-**Step 2: Add AI Routes to Your Flask App**
-Add the following route imports to your main Flask application file (e.g., `app.py`):
+### Step 2: Copy and Merge Files
+
+**Copy the AIPlaygroundCode folder:**
+```bash
+cp -r AIPlaygroundCode/ /path/to/your-existing-app/
+```
+
+**Merge Dependencies (Important!):**
+- **requirements.txt**: Merge the dependencies from this sample's `requirements.txt` with your existing requirements file
+- **wsgi.py**: If you have an existing `wsgi.py`, ensure it properly references your Flask app instance
+- **app.py routes**: Copy the AI-related routes from the sample `app.py` to your existing Flask application
+
+**Example requirements.txt merge:**
+```txt
+# Your existing dependencies
+flask==2.3.3
+# ... your other dependencies
+
+# Add these AI-related dependencies from the sample
+azure-identity==1.15.0
+openai==1.35.13
+pillow==10.0.0
+pydub==0.25.1
+```
+
+### Step 3: Update App Service Configuration
+
+**Add AI configuration as App Service environment variables:**
+```bash
+# Add AI configuration as App Service environment variables
+az webapp config appsettings set --name <your-app-name> --resource-group <your-rg> --settings \
+  AZURE_INFERENCE_ENDPOINT="https://your-endpoint.services.ai.azure.com/models" \
+  AZURE_CLIENT_ID="system-assigned-managed-identity" \
+  AZURE_AI_CHAT_DEPLOYMENT_NAME="gpt-4o-mini" \
+  AZURE_AI_AUDIO_DEPLOYMENT_NAME="gpt-4o-mini-audio-preview"
+```
+
+**Note**: These environment variables will be automatically configured if you use `azd up` with this template.
+
+### Step 4: Add AI Routes to Your Flask App
+
+Add these imports and routes to your existing Flask application:
 ```python
 # Add these imports to your existing app.py
 from AIPlaygroundCode.config import get_model_config, update_model_config, is_configured
 from AIPlaygroundCode.scenarios.chat import handle_chat_message
 from AIPlaygroundCode.scenarios.multimodal import handle_multimodal_message
 
-# Add this route for settings configuration
+# Add AI configuration routes
 @app.route('/settings')
 def settings():
     from flask import render_template
@@ -127,12 +199,25 @@ def settings():
 
 @app.route('/settings', methods=['POST'])
 def update_settings():
-    # Add settings update logic from the sample app.py
+    # Copy the complete settings update logic from the sample app.py
+    # This includes form handling, validation, and configuration updates
+    pass
+
+# Add AI chat routes
+@app.route('/chat', methods=['POST'])
+def chat():
+    # Copy the complete chat logic from the sample app.py
+    pass
+
+@app.route('/multimodal', methods=['POST'])
+def multimodal():
+    # Copy the complete multimodal logic from the sample app.py  
     pass
 ```
 
-**Step 3: Add Popup Interface to Your Templates**
-Copy this code snippet into your existing HTML templates where you want the AI chat button:
+### Step 5: Add AI Interface to Your Templates
+
+Add this floating AI chat button to your existing HTML templates:
 ```html
 <!-- Add this floating AI chat button to your templates -->
 <div id="ai-chat-popup" style="position: fixed; bottom: 20px; right: 20px; z-index: 1000;">
@@ -145,10 +230,18 @@ function openAIChat() {
 </script>
 ```
 
-#### What You Get:
-- 🎯 **New Routes**: `/settings` for AI configuration
-- ⚙️ **Settings Page**: Self-service configuration interface for AI credentials  
-- 💬 **Popup Chat Interface**: Floating AI assistant accessible from any page  
+### Important Considerations:
+- 🔐 **Security**: Uses Managed Identity for secure authentication, no API keys needed
+- 🏗️ **Dependencies**: Carefully merge `requirements.txt` to avoid version conflicts
+- ⚙️ **Configuration**: Update App Service settings with environment variables
+- 🔧 **Routes**: Copy complete route logic from sample app.py, not just imports
+- 🎯 **Testing**: Test thoroughly after integration to ensure existing functionality isn't affected
+
+#### What You Get After Integration:
+- 🎯 **New Routes**: `/settings`, `/chat`, `/multimodal` for AI capabilities
+- ⚙️ **Settings Page**: Self-service configuration interface for AI endpoints
+- 💬 **AI Chat Interface**: Floating AI assistant accessible from any page
+- 🔐 **Secure Configuration**: Managed Identity authentication with Azure AI Foundry  
 
 ## 🧹 Resource Clean-up
 
@@ -181,12 +274,18 @@ Please note that this process may take up to 10 minutes to complete.
 ### **Q: How do I enable multimodal capabilities?**
 **A:** Enable "Multimodal" in `/settings` and ensure your model supports vision/audio (like gpt-4o, phi-4-multimodal). Upload images/audio via the 📎 button.
 
+### **Q: How do I use reasoning model capabilities?**
+**A:** Enable "Reasoning" in `/settings` and use models like `o1-mini`, `o1-preview`, or `deepseek-r1`. These models provide advanced problem-solving and step-by-step reasoning. Set "Reasoning Effort" to control depth (low/medium/high) and enable "Show Reasoning" to see the thinking process.
+
+### **Q: How do I use structured input/output capabilities?**
+**A:** Enable "Structured Output" in `/settings`, set "Response Format" to "JSON", and define a JSON schema in the "JSON Schema" field. The AI will return responses matching your specified schema structure, perfect for system integration and data processing workflows.
+
 ### **Troubleshooting Common Deployment Issues**
 
 **❌ "Endpoint not found" or 401 Authentication errors:**
 - Verify your Azure AI Foundry endpoint URL ends with `/models` 
-- Ensure your API key is correct and active
-- Use the "🧪 Test Config" button to validate credentials
+- Ensure Managed Identity has proper permissions (Cognitive Services OpenAI User role)
+- Use the "🧪 Test Config" button to validate connection
 - Check that your model deployment is active in Azure AI Foundry
 
 **❌ Azure deployment fails with "azd up" command:**
@@ -196,9 +295,10 @@ Please note that this process may take up to 10 minutes to complete.
 - Clear previous deployments with `azd down` before retrying
 
 **❌ Application not starting after deployment:**
-- Check Application Insights logs in Azure portal for detailed errors
-- Verify Key Vault permissions are properly configured
+- Check App Service logs in Azure portal for detailed errors (under Monitoring > Log stream)
+- Verify Managed Identity permissions are properly configured for AI resources
 - Ensure all required environment variables are set in App Service Configuration
+- Review deployment logs for any missing dependencies or configuration issues
 
 **❌ "ModuleNotFoundError" or dependency issues:**
 - Verify all files from `requirements.txt` were properly deployed
@@ -222,10 +322,9 @@ Pricing varies per region and usage, so it isn't possible to predict exact costs
 
 You can try the [Azure pricing calculator](https://azure.microsoft.com/pricing/calculator) for the resources:
 
-- **Azure App Service**: Basic B1 tier with 1.75 GB RAM, 10 GB storage. [Pricing](https://azure.microsoft.com/pricing/details/app-service/windows/)
-- **Azure Key Vault**: Standard tier for secure credential storage. [Pricing](https://azure.microsoft.com/pricing/details/key-vault/)  
-- **Application Insights**: Pay-as-you-go tier for monitoring and telemetry. [Pricing](https://azure.microsoft.com/pricing/details/monitor/)
+- **Azure App Service**: Basic B2 tier with 3.5 GB RAM, 10 GB storage. [Pricing](https://azure.microsoft.com/pricing/details/app-service/windows/)
 - **Azure AI Services**: Consumption-based pricing for model usage (tokens). [Pricing](https://azure.microsoft.com/pricing/details/cognitive-services/openai-service/)
+- **Azure Storage Account**: Standard LRS for AI project data (minimal cost). [Pricing](https://azure.microsoft.com/pricing/details/storage/)
 
 ⚠️ **Cost Management**: To avoid unnecessary costs, remember to clean up your resources when no longer needed by running `azd down` or deleting the resource group in the Azure Portal.
 
@@ -261,11 +360,11 @@ BY ACCESSING OR USING THE SOFTWARE, YOU ACKNOWLEDGE THAT THE SOFTWARE IS NOT DES
 
 ---
 
-## � Support and Feedback
+## 🎯 Support and Feedback
 
-- 🐛 **Issues**: Report bugs or request features via [GitHub issues](https://github.com/Azure-Samples/azure-app-service-ai-scenarios-integrated-sample/issues)
-- 💬 **Questions**: Use [GitHub Discussions](https://github.com/Azure-Samples/azure-app-service-ai-scenarios-integrated-sample/discussions) for implementation questions
-- ⭐ **Rate the Sample**: Star the repository if this helped your project
+- 🐛 **Issues**: Report bugs or request features via [GitHub Issues](https://github.com/Azure-Samples/azure-app-service-ai-scenarios-integrated-sample/issues)
+- 💬 **Questions**: Use [GitHub Discussions](https://github.com/Azure-Samples/azure-app-service-ai-scenarios-integrated-sample/discussions) for implementation questions  
+- ⭐ **Rate the Sample**: Star the [repository](https://github.com/Azure-Samples/azure-app-service-ai-scenarios-integrated-sample) if this helped your project
 
 ---
 

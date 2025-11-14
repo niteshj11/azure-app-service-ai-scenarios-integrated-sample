@@ -10,17 +10,9 @@ param storageAccountName string
 param aiServicesName string
 @description('The AI Services model deployments.')
 param aiServiceModelDeployments array = []
-@description('The Log Analytics resource name.')
-param logAnalyticsName string = ''
-@description('The Application Insights resource name.')
-param applicationInsightsName string = ''
-@description('The Azure Search resource name.')
-param searchServiceName string = ''
 @description('The Application Insights connection name.')
 param appInsightConnectionName string
 param tags object = {}
-param runnerPrincipalId string
-param runnerPrincipalType string
 
 module storageAccount '../storage/storage-account.bicep' = {
   name: 'storageAccount'
@@ -51,25 +43,8 @@ module storageAccount '../storage/storage-account.bicep' = {
   }
 }
 
-module logAnalytics '../monitor/loganalytics.bicep' = if (!empty(logAnalyticsName)) {
-  name: 'logAnalytics'
-  params: {
-    location: location
-    tags: tags
-    name: logAnalyticsName
-  }
-}
-
-module applicationInsights '../monitor/applicationinsights.bicep' = if (!empty(applicationInsightsName)) {
-  name: 'applicationInsights'
-  params: {
-    location: location
-    tags: tags
-    name: applicationInsightsName
-    logAnalyticsWorkspaceId: !empty(logAnalyticsName) ? logAnalytics.outputs.id : ''
-  }
-}
-
+// Simplified AI Services deployment without Application Insights dependency
+// Application Insights can be added later if monitoring is required
 module aiServices '../ai/cognitiveservices.bicep' = {
   name: 'aiServices'
   params: {
@@ -78,8 +53,8 @@ module aiServices '../ai/cognitiveservices.bicep' = {
     aiServiceName: aiServicesName
     aiProjectName: aiProjectName
     deployments: aiServiceModelDeployments
-    appInsightsId: !empty(applicationInsightsName) ? applicationInsights.outputs.id : ''
-    appInsightConnectionString: !empty(applicationInsightsName) ? applicationInsights.outputs.connectionString : ''
+    appInsightsId: ''
+    appInsightConnectionString: ''
     appInsightConnectionName: appInsightConnectionName
     storageAccountId: storageAccount.outputs.id
     storageAccountConnectionName: 'storage-connection'

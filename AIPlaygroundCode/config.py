@@ -1,26 +1,25 @@
 """
-Configuration management for Azure Linux App Service AI Chatbot.
+Configuration management for Azure Linux App Service AI Chatbot with Managed Identity.
 
-This module handles all configuration settings with Key Vault as the source of truth
-for sensitive data (endpoint, API key), App Service settings as fallback,
-and JSON file for non-sensitive settings.
+This module handles all configuration settings with Azure Managed Identity authentication
+eliminating the need for API keys. Configuration sources in priority order:
+1. Environment variables (Azure App Service settings)
+2. Local settings.json file for development
 """
 
 import os
 import json
 import logging
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Tuple
 from dataclasses import dataclass, asdict
 from pathlib import Path
 
-# Azure Key Vault integration
+# Azure Managed Identity integration
 try:
-    from azure.keyvault.secrets import SecretClient
     from azure.identity import DefaultAzureCredential, ManagedIdentityCredential
-    from azure.core.exceptions import AzureError
-    KEY_VAULT_AVAILABLE = True
+    AZURE_IDENTITY_AVAILABLE = True
 except ImportError:
-    KEY_VAULT_AVAILABLE = False
+    AZURE_IDENTITY_AVAILABLE = False
 
 # Setup logging
 logger = logging.getLogger(__name__)
@@ -128,8 +127,112 @@ Always maintain customer confidentiality and follow enterprise data handling pol
     
     def is_azure_configured(self) -> bool:
         """Check if Azure configuration is complete."""
-        return bool(self.endpoint and self.endpoint.strip() and 
-                   self.api_key and self.api_key.strip())
+        import os
+        
+        # Check if using managed identity
+        is_managed_identity = os.getenv('AZURE_CLIENT_ID') == 'system-assigned-managed-identity'
+        
+        if is_managed_identity:
+            # For managed identity, we only need endpoint
+            return bool(self.endpoint and self.endpoint.strip())
+        else:
+            # For API key authentication, we need both endpoint and API key
+            return bool(self.endpoint and self.endpoint.strip() and 
+                       self.api_key and self.api_key.strip())
+    
+    def is_using_managed_identity(self) -> bool:
+        """Check if currently using Azure Managed Identity."""
+        import os
+        return (
+            os.getenv('WEBSITE_SITE_NAME') and  # Azure App Service indicator
+            os.getenv('AZURE_CLIENT_ID') == 'system-assigned-managed-identity'
+        )
+    
+
+    
+    @property
+    def is_managed_identity_mode(self) -> bool:
+        """Property to indicate if using managed identity for template access."""
+        return self.is_using_managed_identity()
+    
+    @property
+    def is_endpoint_from_deployment(self) -> bool:
+        """Property to indicate if endpoint came from deployment parameters."""
+        import os
+        return (self.is_using_managed_identity() and 
+                bool(os.getenv('AZURE_INFERENCE_ENDPOINT')))
+    
+    @property
+    def is_model_from_deployment(self) -> bool:
+        """Property to indicate if model came from deployment parameters."""
+        import os
+        return (self.is_using_managed_identity() and 
+                bool(os.getenv('AZURE_AI_CHAT_DEPLOYMENT_NAME')))
+    
+    @property
+    def is_audio_model_from_deployment(self) -> bool:
+        """Property to indicate if audio model came from deployment parameters."""
+        import os
+        return (self.is_using_managed_identity() and 
+                bool(os.getenv('AZURE_AI_AUDIO_DEPLOYMENT_NAME')))
+    
+    @property
+    def auth_method_display(self) -> str:
+        """Property to show authentication method in UI."""
+        if self.is_using_managed_identity():
+            return "🔐 Managed Identity (Automatic)"
+        else:
+            return ""
+    
+    @property
+    def display_endpoint(self) -> str:
+        """Get endpoint for display - shows actual value or empty for placeholder."""
+        return self.endpoint or ''
+    
+    @property 
+    def display_api_key(self) -> str:
+        """Get API key for display based on authentication mode."""
+        if self.is_using_managed_identity():
+            return '🔐 Managed Identity (Automatic)'
+        return self.api_key or ''
+    
+    @property
+    def is_api_key_disabled(self) -> bool:
+        """Check if API key field should be disabled."""
+        return self.is_using_managed_identity()
+    
+    @property
+    def display_model(self) -> str:
+        """Get model name for display."""
+        return self.model or ''
+    
+    @property
+    def display_audio_model(self) -> str:
+        """Get audio model name for display."""
+        return self.audio_model or ''
+
+    def validate_form_data(self, form_data: Dict[str, Any]) -> Tuple[bool, str]:
+        """Validate form data considering authentication mode."""
+        is_managed_identity = self.is_using_managed_identity()
+        
+        # Validate endpoint
+        if not form_data.get('endpoint', '').strip():
+            return False, 'Azure endpoint is required. Please enter your Azure AI Foundry endpoint URL.'
+        
+        # Validate API key only if not using managed identity
+        if not is_managed_identity and not form_data.get('api_key', '').strip():
+            return False, 'Azure API key is required. Please enter your Azure AI Foundry API key.'
+        
+        # If using managed identity, set placeholder for API key
+        if is_managed_identity and not form_data.get('api_key'):
+            form_data['api_key'] = 'managed-identity'
+        
+        # Validate endpoint format
+        endpoint = form_data.get('endpoint', '')
+        if not endpoint.startswith('https://'):
+            return False, 'Invalid endpoint format. Azure endpoint must start with "https://".'
+        
+        return True, ''
     
     def get_model_params(self) -> Dict[str, Any]:
         """Get parameters for Azure AI API calls."""
@@ -175,118 +278,6 @@ Always maintain customer confidentiality and follow enterprise data handling pol
         return params
 
 
-class KeyVaultClient:
-    """Client for accessing Azure Key Vault secrets with intelligent initialization."""
-    
-    def __init__(self, key_vault_name: Optional[str] = None, is_production: bool = True):
-        # Auto-detect Key Vault name from multiple sources
-        self.key_vault_name = (
-            key_vault_name or 
-            os.getenv('AZURE_KEY_VAULT_NAME') or 
-            os.getenv('KEY_VAULT_NAME') or
-            self._extract_keyvault_name_from_env()
-        )
-        
-        self.is_production = is_production
-        self.client = None
-        
-        # Initialize Key Vault client if available and needed
-        if self._should_initialize_keyvault():
-            self._initialize_client()
-        else:
-            reason = self._get_skip_reason()
-            logger.info(f"Key Vault client not initialized: {reason}")
-    
-    def _extract_keyvault_name_from_env(self) -> str:
-        """Extract Key Vault name from Key Vault reference strings in environment variables."""
-        # Check common environment variables for Key Vault references
-        env_vars_to_check = [
-            'AZURE_INFERENCE_ENDPOINT',
-            'AZURE_INFERENCE_CREDENTIAL', 
-            'AZURE_OPENAI_ENDPOINT',
-            'AZURE_OPENAI_KEY'
-        ]
-        
-        for env_var in env_vars_to_check:
-            value = os.getenv(env_var, '')
-            if value.startswith('@Microsoft.KeyVault(VaultName='):
-                # Extract vault name from: @Microsoft.KeyVault(VaultName=mykeyvault;SecretName=mysecret)
-                try:
-                    start = value.find('VaultName=') + len('VaultName=')
-                    end = value.find(';', start)
-                    if end == -1:
-                        end = value.find(')', start)
-                    vault_name = value[start:end]
-                    logger.info(f"Extracted Key Vault name from {env_var}: {vault_name}")
-                    return vault_name
-                except Exception as e:
-                    logger.debug(f"Failed to extract Key Vault name from {env_var}: {e}")
-        
-        return ''
-    
-    def _should_initialize_keyvault(self) -> bool:
-        """Determine if Key Vault client should be initialized."""
-        return (
-            KEY_VAULT_AVAILABLE and 
-            self.key_vault_name and 
-            self.is_production
-        )
-    
-    def _get_skip_reason(self) -> str:
-        """Get human-readable reason why Key Vault initialization was skipped."""
-        if not KEY_VAULT_AVAILABLE:
-            return "Azure Key Vault SDK not available"
-        elif not self.key_vault_name:
-            return "No Key Vault name found"
-        elif not self.is_production:
-            return "Local development mode"
-        else:
-            return "Unknown reason"
-    
-    def _initialize_client(self) -> None:
-        """Initialize the Key Vault client."""
-        try:
-            # Use DefaultAzureCredential which works with managed identity in Azure
-            credential = DefaultAzureCredential()
-            key_vault_url = f"https://{self.key_vault_name}.vault.azure.net/"
-            self.client = SecretClient(vault_url=key_vault_url, credential=credential)
-            logger.info(f"Key Vault client initialized: {self.key_vault_name}")
-        except Exception as e:
-            logger.warning(f"Failed to initialize Key Vault client for {self.key_vault_name}: {e}")
-            self.client = None
-    
-    def get_secret(self, secret_name: str) -> Optional[str]:
-        """Get a secret from Key Vault."""
-        if not self.client:
-            return None
-            
-        try:
-            secret = self.client.get_secret(secret_name)
-            logger.info(f"Successfully retrieved secret: {secret_name}")
-            return secret.value
-        except AzureError as e:
-            logger.warning(f"Failed to get secret '{secret_name}' from Key Vault: {e}")
-            return None
-        except Exception as e:
-            logger.error(f"Unexpected error getting secret '{secret_name}': {e}")
-            return None
-    
-    def set_secret(self, secret_name: str, secret_value: str) -> bool:
-        """Set a secret in Key Vault."""
-        if not self.client:
-            return False
-            
-        try:
-            self.client.set_secret(secret_name, secret_value)
-            logger.info(f"Successfully set secret: {secret_name}")
-            return True
-        except AzureError as e:
-            logger.warning(f"Failed to set secret '{secret_name}' in Key Vault: {e}")
-            return False
-        except Exception as e:
-            logger.error(f"Unexpected error setting secret '{secret_name}': {e}")
-            return False
-
 
 class ConfigManager:
     """Manages configuration with intelligent environment auto-detection."""
@@ -306,11 +297,8 @@ class ConfigManager:
         logger.info(f"Auto-detected environment: {env_type}")
         logger.info(f"Using config file: {self.config_file}")
         
-        # Initialize Key Vault with production flag
-        if self.is_production:
-            self.key_vault = KeyVaultClient(is_production=self.is_production)
-        else:
-            self.key_vault = None
+        # No Key Vault needed for managed identity approach
+        self.key_vault = None
             
         self._load_config()
         self._ensure_upload_folder()
@@ -417,47 +405,48 @@ class ConfigManager:
         """
         Validate configuration after loading to ensure consistency.
         
-        After cleanup - this mainly validates that we have credentials configured,
-        since Azure/Key Vault references are no longer automatically set by Bicep.
+        Handles both managed identity and API key authentication modes.
         """
-        has_direct_credentials = (
-            self.config.endpoint and 
-            self.config.api_key and 
-            self.config.endpoint.strip() and
-            self.config.api_key.strip()
-        )
+        is_managed_identity = os.getenv('AZURE_CLIENT_ID') == 'system-assigned-managed-identity'
         
-        # Log configuration status
-        if has_direct_credentials:
-            source = "Key Vault" if self.is_production else "settings file"
-            logger.info(f"Azure AI credentials loaded from {source}")
-        else:
-            if self.is_production:
-                logger.warning("Azure environment detected but no credentials found - configure via settings page")
+        has_endpoint = self.config.endpoint and self.config.endpoint.strip()
+        has_api_key = self.config.api_key and self.config.api_key.strip()
+        
+        # For managed identity, we only need endpoint
+        if is_managed_identity:
+            if has_endpoint:
+                logger.info("Azure AI configuration loaded - Using Managed Identity authentication")
             else:
-                logger.info("Local environment - configure credentials via settings.json or settings page")
+                logger.warning("Managed Identity detected but no endpoint configured")
+        else:
+            # For API key authentication, we need both endpoint and API key
+            has_credentials = has_endpoint and has_api_key
+            
+            if has_credentials:
+                source = "Key Vault" if self.is_production else "settings file"
+                logger.info(f"Azure AI credentials loaded from {source}")
+            else:
+                if self.is_production:
+                    logger.warning("Azure environment detected but no credentials found - configure via settings page")
+                else:
+                    logger.info("Local environment - configure credentials via settings.json or settings page")
     
     def _load_production_config(self) -> None:
-        """Load configuration for production: Key Vault for sensitive, JSON for others."""
-        # First: Load non-sensitive settings from settings.json
+        """Load configuration for production: settings.json + environment variables."""
+        # Load all settings from settings.json (no sensitive/non-sensitive distinction needed)
         if self.config_file.exists():
             try:
                 with open(self.config_file, 'r', encoding='utf-8') as f:
                     data = json.load(f)
-                    # Only load non-sensitive data from JSON in production
-                    sensitive_keys = {'endpoint', 'api_key'}
-                    non_sensitive_data = {k: v for k, v in data.items() if k not in sensitive_keys}
-                    self.config.update_from_dict(non_sensitive_data)
-                    logger.info("Loaded non-sensitive configuration from settings.json")
+                    self.config.update_from_dict(data)
+                    logger.info("Loaded configuration from settings.json")
             except (json.JSONDecodeError, FileNotFoundError, PermissionError) as e:
                 logger.warning(f"Could not load settings.json: {e}")
         
-        # Second: Load sensitive data from Key Vault (PRIMARY SOURCE)
-        self._load_from_key_vault()
+        # Load from environment variables (for managed identity and deployment parameters)
+        self._load_from_environment()
         
-        # Third: Fallback to App Service settings (environment variables)
-        if not self.config.endpoint or not self.config.api_key:
-            self._load_from_environment()
+        logger.info(f"Production config loaded - Managed Identity: {self.config.is_using_managed_identity()}")
     
     def _load_local_config(self) -> None:
         """Load configuration for local development: All settings from JSON file."""
@@ -478,52 +467,48 @@ class ConfigManager:
         if not self.config.endpoint or not self.config.api_key:
             self._try_migrate_from_env()
     
-    def _load_from_key_vault(self) -> None:
-        """Load sensitive configuration from Azure Key Vault (production only)."""
-        if not self.key_vault or not self.key_vault.client:
-            logger.info("Key Vault not available, skipping Key Vault configuration load")
-            return
-        
-        try:
-            # Try to get endpoint from Key Vault using the actual secret names we created
-            endpoint = self.key_vault.get_secret('AZURE-AI-ENDPOINT')
-            if endpoint:
-                self.config.endpoint = endpoint
-                logger.info("Loaded Azure AI endpoint from Key Vault")
-            
-            # Try to get API key from Key Vault using the actual secret names we created
-            api_key = self.key_vault.get_secret('AZURE-AI-KEY')
-            if api_key:
-                self.config.api_key = api_key
-                logger.info("Loaded Azure AI API key from Key Vault")
-                
-        except Exception as e:
-            logger.warning(f"Error loading from Key Vault: {e}")
+
     
     def _load_from_environment(self) -> None:
-        """Load Azure credentials from environment variables."""
+        """Load Azure credentials and model configuration from environment variables."""
         # Check for Azure AI Inference credentials
         azure_endpoint = os.getenv('AZURE_INFERENCE_ENDPOINT')
         azure_credential = os.getenv('AZURE_INFERENCE_CREDENTIAL')
         
+        # Check if we're using managed identity
+        is_managed_identity = os.getenv('AZURE_CLIENT_ID') == 'system-assigned-managed-identity'
+        
         # Check for legacy Azure OpenAI credentials
         if not azure_endpoint:
             azure_endpoint = os.getenv('AZURE_OPENAI_ENDPOINT')
-        if not azure_credential:
+        if not azure_credential and not is_managed_identity:
             azure_credential = os.getenv('AZURE_OPENAI_KEY') or os.getenv('AZURE_OPENAI_API_KEY')
         
-        # In production, skip Key Vault reference strings - let Azure resolve them
-        if self.is_production and azure_endpoint and azure_endpoint.startswith('@Microsoft.KeyVault'):
-            logger.info("Skipping Key Vault reference string in production - let Azure handle resolution")
-            return
+        # Load endpoint from environment
+        if azure_endpoint:
+            self.config.endpoint = azure_endpoint
+            logger.info("Loaded Azure endpoint from environment variables")
         
-        # Update config if environment variables are found and not Key Vault references
-        if azure_endpoint and azure_credential:
-            # Ensure we don't use Key Vault reference strings directly
-            if not azure_endpoint.startswith('@Microsoft.KeyVault') and not azure_credential.startswith('@Microsoft.KeyVault'):
-                self.config.endpoint = azure_endpoint
-                self.config.api_key = azure_credential
-                logger.info("Loaded Azure credentials from environment variables")
+        # Handle authentication based on mode
+        if is_managed_identity:
+            # For managed identity, set a placeholder to satisfy validation
+            self.config.api_key = 'managed-identity'
+            logger.info("Using Azure Managed Identity authentication")
+        elif azure_credential:
+            self.config.api_key = azure_credential
+            logger.info("Loaded Azure API key from environment variables")
+        
+        # Load model names from infrastructure environment variables
+        chat_model = os.getenv('AZURE_AI_CHAT_DEPLOYMENT_NAME')
+        audio_model = os.getenv('AZURE_AI_AUDIO_DEPLOYMENT_NAME')
+        
+        if chat_model:
+            self.config.model = chat_model
+            logger.info(f"Loaded chat model from environment: {chat_model}")
+        
+        if audio_model:
+            self.config.audio_model = audio_model
+            logger.info(f"Loaded audio model from environment: {audio_model}")
     
     def _try_migrate_from_env(self) -> None:
         """Try to migrate settings from .env file for backward compatibility."""
@@ -560,43 +545,23 @@ class ConfigManager:
         return success
     
     def _save_production_config(self) -> bool:
-        """Save configuration for production: Key Vault for sensitive, JSON for others."""
-        success = True
-        
-        # Save sensitive data to Key Vault
-        if self.key_vault and self.key_vault.client:
-            try:
-                if self.config.endpoint:
-                    if not self.key_vault.set_secret('AZURE-AI-ENDPOINT', self.config.endpoint):
-                        success = False
-                        
-                if self.config.api_key:
-                    if not self.key_vault.set_secret('AZURE-AI-KEY', self.config.api_key):
-                        success = False
-                        
-                logger.info("Saved sensitive configuration to Key Vault")
-            except Exception as e:
-                logger.error(f"Failed to save to Key Vault: {e}")
-                success = False
-        else:
-            logger.warning("Key Vault not available, sensitive data not saved")
-            success = False
-        
-        # Save non-sensitive configuration to JSON file
+        """Save configuration for production: All settings to JSON file (no Key Vault needed)."""
         try:
+            # For managed identity, we can save everything to settings.json
+            # No sensitive API keys to protect
             config_dict = self.config.to_dict()
-            # Remove sensitive keys from JSON storage in production
-            sensitive_keys = {'endpoint', 'api_key'}
-            non_sensitive_dict = {k: v for k, v in config_dict.items() if k not in sensitive_keys}
+            
+            # If using managed identity, don't save the placeholder API key
+            if self.config.is_using_managed_identity() and config_dict.get('api_key') == 'managed-identity':
+                config_dict.pop('api_key', None)
             
             with open(self.config_file, 'w', encoding='utf-8') as f:
-                json.dump(non_sensitive_dict, f, indent=2)
-            logger.info("Saved non-sensitive configuration to settings.json")
-        except (PermissionError, OSError) as e:
-            logger.error(f"Failed to save settings.json: {e}")
-            success = False
-        
-        return success
+                json.dump(config_dict, f, indent=2, ensure_ascii=False)
+            logger.info("Saved configuration to settings.json")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to save configuration: {e}")
+            return False
     
     def _save_local_config(self) -> bool:
         """Save configuration for local development: All settings to JSON file."""

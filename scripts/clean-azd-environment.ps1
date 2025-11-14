@@ -52,7 +52,18 @@ if ($ComprehensiveClean) {
     $env:AZURE_ENV_NAME = $null
     $env:AZURE_RESOURCE_GROUP = $null
     $env:AZURE_TENANT_ID = $null
+    
+    # Clear AI Foundry related parameters
+    $env:aiSetupChoice = $null
+    $env:aiFoundryEndpoint = $null
+    $env:yourChatModelName = $null
+    $env:existingAISubscriptionId = $null
+    $env:existingAIResourceGroupName = $null
+    $env:chatDeploymentName = $null
+    $env:audioDeploymentName = $null
+    
     Write-Host "   ✓ Cleared Azure environment variables" -ForegroundColor Green
+    Write-Host "   ✓ Cleared AI Foundry parameters" -ForegroundColor Green
     
     # Clear global azd config (backup first)
     $globalAzdConfig = "$env:USERPROFILE\.azd"
@@ -102,7 +113,10 @@ if ($TestMode) {
     Write-Host "   5. Create new resource group (Y/n)" -ForegroundColor White
     Write-Host "   6. Resource group name" -ForegroundColor White
     Write-Host "   7. Resource group name (confirmation)" -ForegroundColor White
-    Write-Host "`n   Total: 7 prompts expected" -ForegroundColor Yellow
+    Write-Host "   8. 🚀 AI Setup: Do you have existing AI Foundry? (yes/no)" -ForegroundColor White
+    Write-Host "   9. 📍 AI Foundry endpoint (if existing)" -ForegroundColor White
+    Write-Host "   10. 💬 Chat deployment name (if existing)" -ForegroundColor White
+    Write-Host "`n   Total: 7-10 prompts expected (depends on AI choice)" -ForegroundColor Yellow
 } else {
     Write-Host "`n📋 Expected prompts during azd up:" -ForegroundColor Cyan
     Write-Host "   • Environment name" -ForegroundColor White
@@ -110,6 +124,9 @@ if ($TestMode) {
     Write-Host "   • Azure location" -ForegroundColor White
     Write-Host "   • Resource group selection/creation" -ForegroundColor White
     Write-Host "   • Project name confirmation" -ForegroundColor White
+    Write-Host "   • 🚀 AI Setup: Existing AI Foundry? (yes/no)" -ForegroundColor Cyan
+    Write-Host "   • 📍 AI Foundry endpoint (if using existing)" -ForegroundColor Cyan
+    Write-Host "   • 💬 Chat model deployment name (if using existing)" -ForegroundColor Cyan
 }
 
 # Return success code for automation

@@ -1,0 +1,17 @@
+<step title="Incoming Request" date="2025-11-13T10:45:36.098" instance="8c2c91" url="/api/zipdeploy?isAsync=true" method="POST" type="request" pid="768,1,15" Accept="application/json" Host="njv31app.scm.azurewebsites.net" User-Agent="azsdk-go-zip-deploy/1.0.0 (go1.25.0 X:loopvar; Windows_NT),azdev/1.21.1 (Go go1.25.0 X:loopvar; windows/amd64)" Accept-Encoding="gzip" Authorization="Bea..." Content-Type="application/octet-stream" Content-Length="48977" X-Ms-Correlation-Request-Id="1ad86213c697ae2ae8ffc69038261da0" X-ARR-LOG-ID="1ad86213-c697-ae2a-e8ff-c69038261da0" CLIENT-IP="49.205.251.248:23963" X-SITE-DEPLOYMENT-ID="njv31app" WAS-DEFAULT-HOSTNAME="njv31app.scm.azurewebsites.net" X-Forwarded-Proto="https" X-AppService-Proto="https" X-Forwarded-TlsVersion="1.3" X-WAWS-Unencoded-URL="/api/zipdeploy?isAsync=true" X-Client-IP="49.205.251.248" X-Client-Port="23963" >
+  <step title="ZipPushDeploy" date="2025-11-13T10:45:36.790" >
+    <step title="ZipDeploy. Extract zip. Remote build." date="2025-11-13T10:45:36.807" /><!-- duration: 15ms -->
+    <step title="None repository commit" date="2025-11-13T10:45:36.832" >
+      <step title="Commit id: 1ffae45b-9876-4c2b-acaf-d030e154bd05" date="2025-11-13T10:45:36.838" Message="N/A" AuthorName="N/A" AuthorEmail="N/A" /><!-- duration: 4ms -->
+    </step><!-- duration: 14ms -->
+    <step title="Starting PushDeployAsync" date="2025-11-13T10:45:36.852" /><!-- duration: 6ms -->
+    <step title="Writing artifact to /tmp/zipdeploy/5fccfe30-87a6-41ef-864d-6c638f38e570.zip" date="2025-11-13T10:45:36.877" >
+      <step title="Writing multipart request body to /tmp/zipdeploy/5fccfe30-87a6-41ef-864d-6c638f38e570.zip" date="2025-11-13T10:45:36.883" /><!-- duration: 4ms -->
+    </step><!-- duration: 41ms -->
+    <step title="Start deployment in the background" date="2025-11-13T10:45:36.949" >
+      <step title="Acquiring Deployment Lock" date="2025-11-13T10:45:36.972" /><!-- duration: 8ms -->
+      <step title="Acquired Deployment Lock" date="2025-11-13T10:45:37.033" /><!-- duration: 7ms -->
+    </step><!-- duration: 214ms -->
+  </step><!-- duration: 386ms -->
+  <step title="Outgoing response" date="2025-11-13T10:45:37.198" type="response" statusCode="202" statusText="Accepted" /><!-- duration: 4ms -->
+</step><!-- duration: 1108ms -->

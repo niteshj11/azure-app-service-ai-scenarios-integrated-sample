@@ -4,26 +4,30 @@
   "metadata": {
     "_generator": {
       "name": "bicep",
-      "version": "0.37.4.10188",
-      "templateHash": "4132923825067623583"
+      "version": "0.38.33.27573",
+      "templateHash": "5876710862463163809"
     }
   },
   "parameters": {
     "environmentName": {
       "type": "string",
+      "defaultValue": "[replace(resourceGroup().name, 'rg-', '')]",
       "minLength": 1,
       "maxLength": 64,
       "metadata": {
-        "description": "Environment name. This single input is used to derive all resource names (e.g. <env>-rg, <env>-aisearch)."
+        "description": "Name of the environment provided by azd"
       }
     },
     "location": {
       "type": "string",
       "defaultValue": "[resourceGroup().location]",
-      "minLength": 1,
       "metadata": {
+        "azd": {
+          "type": "location"
+        },
         "description": "Primary location for all resources"
-      }
+      },
+      "minLength": 1
     },
     "principalId": {
       "type": "string",
@@ -32,18 +36,58 @@
         "description": "Id of the user or app to assign application roles"
       }
     },
-    "enableAIServices": {
-      "type": "bool",
-      "defaultValue": false,
+    "aSetupChoice": {
+      "type": "string",
+      "defaultValue": "",
+      "allowedValues": [
+        "new",
+        "existing",
+        ""
+      ],
       "metadata": {
-        "description": "Enable Azure AI services and AI Foundry project"
+        "description": "Choose: new (create AI services) or existing (use your AI Foundry project)"
+      }
+    },
+    "bFoundryEndpoint": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Your existing AI Foundry project endpoint URL (collected conditionally)"
+      }
+    },
+    "cChatModelName": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Your chat model deployment name (collected conditionally)"
+      }
+    },
+    "dAudioModelName": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Your audio model deployment name (collected conditionally)"
+      }
+    },
+    "existingAISubscriptionId": {
+      "type": "string",
+      "defaultValue": "[subscription().subscriptionId]",
+      "metadata": {
+        "description": "Subscription ID where your existing AI Foundry project is located"
+      }
+    },
+    "existingAIResourceGroupName": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().name]",
+      "metadata": {
+        "description": "Resource Group name where your existing AI Foundry project is located"
       }
     },
     "enableManagedIdentity": {
       "type": "bool",
       "defaultValue": true,
       "metadata": {
-        "description": "Enable Managed Identity for the App Service"
+        "description": "Enable Managed Identity for the App Service (required for Azure AI integration)"
       }
     },
     "enableApplicationInsights": {
@@ -53,39 +97,11 @@
         "description": "Enable Application Insights monitoring"
       }
     },
-    "enableSearchService": {
-      "type": "bool",
-      "defaultValue": false,
-      "metadata": {
-        "description": "Enable Azure AI Search service"
-      }
-    },
-    "enableKeyVault": {
-      "type": "bool",
-      "defaultValue": true,
-      "metadata": {
-        "description": "Enable Azure Key Vault for secure configuration storage"
-      }
-    },
-    "azureExistingAIProjectResourceId": {
-      "type": "string",
-      "defaultValue": "",
-      "metadata": {
-        "description": "Use this parameter to use an existing AI project resource ID"
-      }
-    },
     "aiProjectName": {
       "type": "string",
       "defaultValue": "",
       "metadata": {
         "description": "The Azure AI Foundry Hub resource name. If omitted will be generated"
-      }
-    },
-    "applicationInsightsName": {
-      "type": "string",
-      "defaultValue": "",
-      "metadata": {
-        "description": "The application insights resource name. If omitted will be generated"
       }
     },
     "aiServicesName": {
@@ -95,32 +111,11 @@
         "description": "The AI Services resource name. If omitted will be generated"
       }
     },
-    "searchServiceName": {
-      "type": "string",
-      "defaultValue": "",
-      "metadata": {
-        "description": "The Azure Search resource name. If omitted will be generated"
-      }
-    },
-    "aiSearchIndexName": {
-      "type": "string",
-      "defaultValue": "techmart-index",
-      "metadata": {
-        "description": "The search index name"
-      }
-    },
     "storageAccountName": {
       "type": "string",
       "defaultValue": "",
       "metadata": {
         "description": "The Azure Storage Account resource name. If omitted will be generated"
-      }
-    },
-    "logAnalyticsWorkspaceName": {
-      "type": "string",
-      "defaultValue": "",
-      "metadata": {
-        "description": "The log analytics workspace name. If omitted will be generated"
       }
     },
     "appServicePlanName": {
@@ -130,25 +125,11 @@
         "description": "The App Service plan name. If omitted will be generated"
       }
     },
-    "keyVaultName": {
-      "type": "string",
-      "defaultValue": "",
-      "metadata": {
-        "description": "The Key Vault name. If omitted will be generated as <projectname>-kv"
-      }
-    },
     "externalAzureAIEndpoint": {
       "type": "string",
       "defaultValue": "",
       "metadata": {
-        "description": "External Azure AI endpoint URL (will be stored in Key Vault)"
-      }
-    },
-    "externalAzureAIApiKey": {
-      "type": "securestring",
-      "defaultValue": "",
-      "metadata": {
-        "description": "External Azure AI API key (will be stored in Key Vault)"
+        "description": "Legacy parameter - use aiFoundryMode instead"
       }
     },
     "chatModelFormat": {
@@ -167,13 +148,6 @@
       "defaultValue": "gpt-4o-mini",
       "metadata": {
         "description": "Name of the chat model to deploy"
-      }
-    },
-    "chatDeploymentName": {
-      "type": "string",
-      "defaultValue": "gpt-4o-mini",
-      "metadata": {
-        "description": "Name of the model deployment"
       }
     },
     "chatModelVersion": {
@@ -195,70 +169,6 @@
       "defaultValue": 30,
       "metadata": {
         "description": "Capacity of the chat deployment"
-      }
-    },
-    "embedModelFormat": {
-      "type": "string",
-      "defaultValue": "OpenAI",
-      "allowedValues": [
-        "Microsoft",
-        "OpenAI"
-      ],
-      "metadata": {
-        "description": "Format of the embedding model to deploy"
-      }
-    },
-    "embedModelName": {
-      "type": "string",
-      "defaultValue": "text-embedding-3-small",
-      "metadata": {
-        "description": "Name of the embedding model to deploy"
-      }
-    },
-    "embeddingDeploymentName": {
-      "type": "string",
-      "defaultValue": "text-embedding-3-small",
-      "metadata": {
-        "description": "Name of the embedding model deployment"
-      }
-    },
-    "embeddingDeploymentDimensions": {
-      "type": "string",
-      "defaultValue": "100",
-      "metadata": {
-        "description": "Embedding model dimensionality"
-      }
-    },
-    "embedModelVersion": {
-      "type": "string",
-      "defaultValue": "1",
-      "metadata": {
-        "description": "Version of the embedding model to deploy"
-      }
-    },
-    "embedDeploymentSku": {
-      "type": "string",
-      "defaultValue": "Standard",
-      "metadata": {
-        "description": "Sku of the embeddings model deployment"
-      }
-    },
-    "embedDeploymentCapacity": {
-      "type": "int",
-      "defaultValue": 30,
-      "metadata": {
-        "description": "Capacity of the embedding deployment"
-      }
-    },
-    "useApplicationInsights": {
-      "type": "bool",
-      "defaultValue": true
-    },
-    "useSearchService": {
-      "type": "bool",
-      "defaultValue": false,
-      "metadata": {
-        "description": "Use the RAG search"
       }
     },
     "enableAzureMonitorTracing": {
@@ -428,18 +338,24 @@
       "webSitesFunctions": "func-",
       "webStaticSites": "stapp-"
     },
-    "shouldEnableAI": "[or(parameters('enableAIServices'), not(empty(parameters('azureExistingAIProjectResourceId'))))]",
-    "shouldEnableAppInsights": "[or(parameters('enableApplicationInsights'), parameters('useApplicationInsights'))]",
-    "shouldEnableSearch": "[or(parameters('enableSearchService'), parameters('useSearchService'))]",
+    "shouldProvisionNewAI": "[equals(parameters('aSetupChoice'), 'new')]",
+    "shouldUseExistingAI": "[and(equals(parameters('aSetupChoice'), 'existing'), not(empty(parameters('bFoundryEndpoint'))))]",
+    "aiAccountName": "[if(variables('shouldUseExistingAI'), split(split(parameters('bFoundryEndpoint'), '://')[1], '.')[0], '')]",
+    "computedAIResourceId": "[if(variables('shouldUseExistingAI'), format('/subscriptions/{0}/resourceGroups/{1}/providers/Microsoft.CognitiveServices/accounts/{2}', parameters('existingAISubscriptionId'), parameters('existingAIResourceGroupName'), variables('aiAccountName')), '')]",
+    "effectiveChatModelName": "[if(not(empty(parameters('cChatModelName'))), parameters('cChatModelName'), if(variables('shouldProvisionNewAI'), parameters('chatModelName'), 'gpt-4o-mini'))]",
+    "effectiveAudioModelName": "[if(not(empty(parameters('dAudioModelName'))), parameters('dAudioModelName'), 'gpt-4o-mini-audio-preview')]",
+    "shouldEnableAI": "[or(variables('shouldProvisionNewAI'), variables('shouldUseExistingAI'))]",
+    "shouldEnableAppInsights": "[parameters('enableApplicationInsights')]",
     "runnerPrincipalType": "[if(parameters('templateValidationMode'), 'ServicePrincipal', 'User')]",
     "abbrs": "[variables('$fxv#0')]",
     "resourceToken": "[if(parameters('templateValidationMode'), toLower(uniqueString(resourceGroup().id, parameters('environmentName'), parameters('location'), parameters('seed'))), toLower(uniqueString(resourceGroup().id, parameters('environmentName'), parameters('location'))))]",
     "tags": {
       "azd-env-name": "[parameters('environmentName')]"
     },
+    "effectiveChatDeploymentName": "[variables('effectiveChatModelName')]",
     "aiChatModel": [
       {
-        "name": "[parameters('chatDeploymentName')]",
+        "name": "[variables('effectiveChatDeploymentName')]",
         "model": {
           "format": "[parameters('chatModelFormat')]",
           "name": "[parameters('chatModelName')]",
@@ -451,30 +367,13 @@
         }
       }
     ],
-    "aiEmbeddingModel": [
-      {
-        "name": "[parameters('embeddingDeploymentName')]",
-        "model": {
-          "format": "[parameters('embedModelFormat')]",
-          "name": "[parameters('embedModelName')]",
-          "version": "[parameters('embedModelVersion')]"
-        },
-        "sku": {
-          "name": "[parameters('embedDeploymentSku')]",
-          "capacity": "[parameters('embedDeploymentCapacity')]"
-        }
-      }
-    ],
-    "aiDeployments": "[concat(variables('aiChatModel'), if(variables('shouldEnableSearch'), variables('aiEmbeddingModel'), createArray()))]",
-    "logAnalyticsWorkspaceResolvedName": "[if(not(variables('shouldEnableAppInsights')), '', if(not(empty(parameters('logAnalyticsWorkspaceName'))), parameters('logAnalyticsWorkspaceName'), format('{0}{1}', variables('abbrs').operationalInsightsWorkspaces, variables('resourceToken'))))]",
-    "resolvedSearchServiceName": "[if(not(variables('shouldEnableSearch')), '', if(not(empty(parameters('searchServiceName'))), parameters('searchServiceName'), format('{0}{1}', variables('abbrs').searchSearchServices, variables('resourceToken'))))]",
-    "resolvedKeyVaultName": "[if(not(parameters('enableKeyVault')), '', if(not(empty(parameters('keyVaultName'))), parameters('keyVaultName'), format('{0}-kv', parameters('environmentName'))))]"
+    "aiDeployments": "[variables('aiChatModel')]"
   },
   "resources": [
     {
-      "condition": "[and(variables('shouldEnableAI'), empty(parameters('azureExistingAIProjectResourceId')))]",
+      "condition": "[variables('shouldProvisionNewAI')]",
       "type": "Microsoft.Resources/deployments",
-      "apiVersion": "2022-09-01",
+      "apiVersion": "2025-04-01",
       "name": "ai",
       "properties": {
         "expressionEvaluationOptions": {
@@ -488,27 +387,14 @@
           "tags": {
             "value": "[variables('tags')]"
           },
-          "aiProjectName": "[if(not(empty(parameters('aiProjectName'))), createObject('value', parameters('aiProjectName')), createObject('value', format('{0}{1}', variables('abbrs').machineLearningServicesWorkspaces, variables('resourceToken'))))]",
-          "aiServicesName": "[if(not(empty(parameters('aiServicesName'))), createObject('value', parameters('aiServicesName')), createObject('value', format('{0}{1}', variables('abbrs').cognitiveServicesAccounts, variables('resourceToken'))))]",
-          "storageAccountName": "[if(not(empty(parameters('storageAccountName'))), createObject('value', parameters('storageAccountName')), createObject('value', format('{0}{1}', variables('abbrs').storageStorageAccounts, variables('resourceToken'))))]",
-          "logAnalyticsName": {
-            "value": "[variables('logAnalyticsWorkspaceResolvedName')]"
-          },
-          "applicationInsightsName": "[if(not(empty(parameters('applicationInsightsName'))), createObject('value', parameters('applicationInsightsName')), createObject('value', format('{0}{1}', variables('abbrs').insightsComponents, variables('resourceToken'))))]",
-          "searchServiceName": {
-            "value": "[variables('resolvedSearchServiceName')]"
-          },
+          "aiProjectName": "[if(not(empty(parameters('aiProjectName'))), createObject('value', parameters('aiProjectName')), createObject('value', format('{0}-aiproject', parameters('environmentName'))))]",
+          "aiServicesName": "[if(not(empty(parameters('aiServicesName'))), createObject('value', parameters('aiServicesName')), createObject('value', format('{0}-ai', parameters('environmentName'))))]",
+          "storageAccountName": "[if(not(empty(parameters('storageAccountName'))), createObject('value', parameters('storageAccountName')), createObject('value', format('{0}st', replace(parameters('environmentName'), '-', ''))))]",
           "aiServiceModelDeployments": {
             "value": "[variables('aiDeployments')]"
           },
           "appInsightConnectionName": {
             "value": "appinsight-connection"
-          },
-          "runnerPrincipalId": {
-            "value": "[parameters('principalId')]"
-          },
-          "runnerPrincipalType": {
-            "value": "[variables('runnerPrincipalType')]"
           }
         },
         "template": {
@@ -517,8 +403,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.37.4.10188",
-              "templateHash": "6570987991137623726"
+              "version": "0.38.33.27573",
+              "templateHash": "17005866665169169570"
             }
           },
           "parameters": {
@@ -554,27 +440,6 @@
                 "description": "The AI Services model deployments."
               }
             },
-            "logAnalyticsName": {
-              "type": "string",
-              "defaultValue": "",
-              "metadata": {
-                "description": "The Log Analytics resource name."
-              }
-            },
-            "applicationInsightsName": {
-              "type": "string",
-              "defaultValue": "",
-              "metadata": {
-                "description": "The Application Insights resource name."
-              }
-            },
-            "searchServiceName": {
-              "type": "string",
-              "defaultValue": "",
-              "metadata": {
-                "description": "The Azure Search resource name."
-              }
-            },
             "appInsightConnectionName": {
               "type": "string",
               "metadata": {
@@ -584,18 +449,12 @@
             "tags": {
               "type": "object",
               "defaultValue": {}
-            },
-            "runnerPrincipalId": {
-              "type": "string"
-            },
-            "runnerPrincipalType": {
-              "type": "string"
             }
           },
           "resources": [
             {
               "type": "Microsoft.Resources/deployments",
-              "apiVersion": "2022-09-01",
+              "apiVersion": "2025-04-01",
               "name": "storageAccount",
               "properties": {
                 "expressionEvaluationOptions": {
@@ -647,8 +506,8 @@
                   "metadata": {
                     "_generator": {
                       "name": "bicep",
-                      "version": "0.37.4.10188",
-                      "templateHash": "12949687117434798658"
+                      "version": "0.38.33.27573",
+                      "templateHash": "10717111524645732551"
                     },
                     "description": "Creates an Azure storage account."
                   },
@@ -878,222 +737,8 @@
               }
             },
             {
-              "condition": "[not(empty(parameters('logAnalyticsName')))]",
               "type": "Microsoft.Resources/deployments",
-              "apiVersion": "2022-09-01",
-              "name": "logAnalytics",
-              "properties": {
-                "expressionEvaluationOptions": {
-                  "scope": "inner"
-                },
-                "mode": "Incremental",
-                "parameters": {
-                  "location": {
-                    "value": "[parameters('location')]"
-                  },
-                  "tags": {
-                    "value": "[parameters('tags')]"
-                  },
-                  "name": {
-                    "value": "[parameters('logAnalyticsName')]"
-                  }
-                },
-                "template": {
-                  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
-                  "contentVersion": "1.0.0.0",
-                  "metadata": {
-                    "_generator": {
-                      "name": "bicep",
-                      "version": "0.37.4.10188",
-                      "templateHash": "13672445621534268649"
-                    },
-                    "description": "Creates a Log Analytics Workspace."
-                  },
-                  "parameters": {
-                    "name": {
-                      "type": "string"
-                    },
-                    "location": {
-                      "type": "string",
-                      "defaultValue": "[resourceGroup().location]"
-                    },
-                    "tags": {
-                      "type": "object",
-                      "defaultValue": {}
-                    },
-                    "retentionInDays": {
-                      "type": "int",
-                      "defaultValue": 30,
-                      "minValue": 30,
-                      "maxValue": 730,
-                      "metadata": {
-                        "description": "The workspace data retention in days. Allowed values are per pricing plan. See https://docs.microsoft.com/en-us/azure/azure-monitor/platform/manage-cost-storage#change-the-data-retention-period for details."
-                      }
-                    },
-                    "dailyQuotaGb": {
-                      "type": "int",
-                      "defaultValue": -1,
-                      "metadata": {
-                        "description": "The workspace daily quota for ingestion."
-                      }
-                    },
-                    "sku": {
-                      "type": "string",
-                      "defaultValue": "PerGB2018",
-                      "allowedValues": [
-                        "Free",
-                        "Standard",
-                        "Premium",
-                        "PerNode",
-                        "PerGB2018",
-                        "Standalone",
-                        "CapacityReservation"
-                      ]
-                    }
-                  },
-                  "resources": [
-                    {
-                      "type": "Microsoft.OperationalInsights/workspaces",
-                      "apiVersion": "2022-10-01",
-                      "name": "[parameters('name')]",
-                      "location": "[parameters('location')]",
-                      "tags": "[parameters('tags')]",
-                      "properties": {
-                        "sku": {
-                          "name": "[parameters('sku')]"
-                        },
-                        "retentionInDays": "[parameters('retentionInDays')]",
-                        "workspaceCapping": "[if(equals(parameters('dailyQuotaGb'), -1), createObject(), createObject('dailyQuotaGb', parameters('dailyQuotaGb')))]",
-                        "publicNetworkAccessForIngestion": "Enabled",
-                        "publicNetworkAccessForQuery": "Enabled"
-                      }
-                    }
-                  ],
-                  "outputs": {
-                    "id": {
-                      "type": "string",
-                      "value": "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('name'))]"
-                    },
-                    "name": {
-                      "type": "string",
-                      "value": "[parameters('name')]"
-                    },
-                    "customerId": {
-                      "type": "string",
-                      "value": "[reference(resourceId('Microsoft.OperationalInsights/workspaces', parameters('name')), '2022-10-01').customerId]"
-                    }
-                  }
-                }
-              }
-            },
-            {
-              "condition": "[not(empty(parameters('applicationInsightsName')))]",
-              "type": "Microsoft.Resources/deployments",
-              "apiVersion": "2022-09-01",
-              "name": "applicationInsights",
-              "properties": {
-                "expressionEvaluationOptions": {
-                  "scope": "inner"
-                },
-                "mode": "Incremental",
-                "parameters": {
-                  "location": {
-                    "value": "[parameters('location')]"
-                  },
-                  "tags": {
-                    "value": "[parameters('tags')]"
-                  },
-                  "name": {
-                    "value": "[parameters('applicationInsightsName')]"
-                  },
-                  "logAnalyticsWorkspaceId": "[if(not(empty(parameters('logAnalyticsName'))), createObject('value', reference(resourceId('Microsoft.Resources/deployments', 'logAnalytics'), '2022-09-01').outputs.id.value), createObject('value', ''))]"
-                },
-                "template": {
-                  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
-                  "contentVersion": "1.0.0.0",
-                  "metadata": {
-                    "_generator": {
-                      "name": "bicep",
-                      "version": "0.37.4.10188",
-                      "templateHash": "12056423667040176559"
-                    },
-                    "description": "Creates an Application Insights instance."
-                  },
-                  "parameters": {
-                    "name": {
-                      "type": "string"
-                    },
-                    "location": {
-                      "type": "string",
-                      "defaultValue": "[resourceGroup().location]"
-                    },
-                    "tags": {
-                      "type": "object",
-                      "defaultValue": {}
-                    },
-                    "logAnalyticsWorkspaceId": {
-                      "type": "string",
-                      "defaultValue": "",
-                      "metadata": {
-                        "description": "The resource ID of the Log Analytics workspace to send data to."
-                      }
-                    },
-                    "kind": {
-                      "type": "string",
-                      "defaultValue": "web",
-                      "allowedValues": [
-                        "web",
-                        "other"
-                      ],
-                      "metadata": {
-                        "description": "The type of Application Insights to create."
-                      }
-                    }
-                  },
-                  "resources": [
-                    {
-                      "type": "Microsoft.Insights/components",
-                      "apiVersion": "2020-02-02",
-                      "name": "[parameters('name')]",
-                      "location": "[parameters('location')]",
-                      "tags": "[parameters('tags')]",
-                      "kind": "[parameters('kind')]",
-                      "properties": {
-                        "Application_Type": "[parameters('kind')]",
-                        "WorkspaceResourceId": "[if(not(empty(parameters('logAnalyticsWorkspaceId'))), parameters('logAnalyticsWorkspaceId'), null())]",
-                        "IngestionMode": "[if(not(empty(parameters('logAnalyticsWorkspaceId'))), 'LogAnalytics', 'ApplicationInsights')]",
-                        "publicNetworkAccessForIngestion": "Enabled",
-                        "publicNetworkAccessForQuery": "Enabled"
-                      }
-                    }
-                  ],
-                  "outputs": {
-                    "id": {
-                      "type": "string",
-                      "value": "[resourceId('Microsoft.Insights/components', parameters('name'))]"
-                    },
-                    "name": {
-                      "type": "string",
-                      "value": "[parameters('name')]"
-                    },
-                    "connectionString": {
-                      "type": "string",
-                      "value": "[reference(resourceId('Microsoft.Insights/components', parameters('name')), '2020-02-02').ConnectionString]"
-                    },
-                    "instrumentationKey": {
-                      "type": "string",
-                      "value": "[reference(resourceId('Microsoft.Insights/components', parameters('name')), '2020-02-02').InstrumentationKey]"
-                    }
-                  }
-                }
-              },
-              "dependsOn": [
-                "[resourceId('Microsoft.Resources/deployments', 'logAnalytics')]"
-              ]
-            },
-            {
-              "type": "Microsoft.Resources/deployments",
-              "apiVersion": "2022-09-01",
+              "apiVersion": "2025-04-01",
               "name": "aiServices",
               "properties": {
                 "expressionEvaluationOptions": {
@@ -1116,13 +761,17 @@
                   "deployments": {
                     "value": "[parameters('aiServiceModelDeployments')]"
                   },
-                  "appInsightsId": "[if(not(empty(parameters('applicationInsightsName'))), createObject('value', reference(resourceId('Microsoft.Resources/deployments', 'applicationInsights'), '2022-09-01').outputs.id.value), createObject('value', ''))]",
-                  "appInsightConnectionString": "[if(not(empty(parameters('applicationInsightsName'))), createObject('value', reference(resourceId('Microsoft.Resources/deployments', 'applicationInsights'), '2022-09-01').outputs.connectionString.value), createObject('value', ''))]",
+                  "appInsightsId": {
+                    "value": ""
+                  },
+                  "appInsightConnectionString": {
+                    "value": ""
+                  },
                   "appInsightConnectionName": {
                     "value": "[parameters('appInsightConnectionName')]"
                   },
                   "storageAccountId": {
-                    "value": "[reference(resourceId('Microsoft.Resources/deployments', 'storageAccount'), '2022-09-01').outputs.id.value]"
+                    "value": "[reference(resourceId('Microsoft.Resources/deployments', 'storageAccount'), '2025-04-01').outputs.id.value]"
                   },
                   "storageAccountConnectionName": {
                     "value": "storage-connection"
@@ -1134,8 +783,8 @@
                   "metadata": {
                     "_generator": {
                       "name": "bicep",
-                      "version": "0.37.4.10188",
-                      "templateHash": "17680785031026838809"
+                      "version": "0.38.33.27573",
+                      "templateHash": "5052516130956844926"
                     },
                     "description": "Creates an Azure Cognitive Services instance."
                   },
@@ -1330,7 +979,6 @@
                 }
               },
               "dependsOn": [
-                "[resourceId('Microsoft.Resources/deployments', 'applicationInsights')]",
                 "[resourceId('Microsoft.Resources/deployments', 'storageAccount')]"
               ]
             }
@@ -1338,163 +986,15 @@
           "outputs": {
             "projectId": {
               "type": "string",
-              "value": "[reference(resourceId('Microsoft.Resources/deployments', 'aiServices'), '2022-09-01').outputs.projectId.value]"
+              "value": "[reference(resourceId('Microsoft.Resources/deployments', 'aiServices'), '2025-04-01').outputs.projectId.value]"
             },
             "projectEndpoint": {
               "type": "string",
-              "value": "[reference(resourceId('Microsoft.Resources/deployments', 'aiServices'), '2022-09-01').outputs.projectEndpoint.value]"
+              "value": "[reference(resourceId('Microsoft.Resources/deployments', 'aiServices'), '2025-04-01').outputs.projectEndpoint.value]"
             },
             "storageAccountId": {
               "type": "string",
-              "value": "[reference(resourceId('Microsoft.Resources/deployments', 'storageAccount'), '2022-09-01').outputs.id.value]"
-            }
-          }
-        }
-      }
-    },
-    {
-      "condition": "[and(and(variables('shouldEnableSearch'), variables('shouldEnableAI')), empty(parameters('azureExistingAIProjectResourceId')))]",
-      "type": "Microsoft.Resources/deployments",
-      "apiVersion": "2022-09-01",
-      "name": "search",
-      "properties": {
-        "expressionEvaluationOptions": {
-          "scope": "inner"
-        },
-        "mode": "Incremental",
-        "parameters": {
-          "location": {
-            "value": "[parameters('location')]"
-          },
-          "tags": {
-            "value": "[variables('tags')]"
-          },
-          "name": {
-            "value": "[variables('resolvedSearchServiceName')]"
-          },
-          "authOptions": {
-            "value": {
-              "aadOrApiKey": {
-                "aadAuthFailureMode": "http401WithBearerChallenge"
-              }
-            }
-          }
-        },
-        "template": {
-          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
-          "contentVersion": "1.0.0.0",
-          "metadata": {
-            "_generator": {
-              "name": "bicep",
-              "version": "0.37.4.10188",
-              "templateHash": "6387393236531142743"
-            },
-            "description": "Creates an Azure AI Search service."
-          },
-          "parameters": {
-            "name": {
-              "type": "string"
-            },
-            "location": {
-              "type": "string",
-              "defaultValue": "[resourceGroup().location]"
-            },
-            "tags": {
-              "type": "object",
-              "defaultValue": {}
-            },
-            "sku": {
-              "type": "string",
-              "defaultValue": "basic",
-              "allowedValues": [
-                "free",
-                "basic",
-                "standard",
-                "standard2",
-                "standard3",
-                "storage_optimized_l1",
-                "storage_optimized_l2"
-              ],
-              "metadata": {
-                "description": "The pricing tier of the search service you want to create (for example, basic or standard)."
-              }
-            },
-            "replicaCount": {
-              "type": "int",
-              "defaultValue": 1,
-              "minValue": 1,
-              "maxValue": 12,
-              "metadata": {
-                "description": "Replicas distribute search workloads across the service. You need at least two replicas to support high availability of query workloads (not applicable to the free tier)."
-              }
-            },
-            "partitionCount": {
-              "type": "int",
-              "defaultValue": 1,
-              "allowedValues": [
-                1,
-                2,
-                3,
-                4,
-                6,
-                12
-              ],
-              "metadata": {
-                "description": "Partitions allow for scaling of document count as well as faster indexing by sharding your index over multiple search units."
-              }
-            },
-            "hostingMode": {
-              "type": "string",
-              "defaultValue": "default",
-              "allowedValues": [
-                "default",
-                "highDensity"
-              ],
-              "metadata": {
-                "description": "Applicable only for the standard3 SKU. You can set this property to enable up to 3 high density partitions that allow up to 1000 indexes, which is much higher than the maximum indexes allowed for any other SKU."
-              }
-            },
-            "authOptions": {
-              "type": "object",
-              "defaultValue": {},
-              "metadata": {
-                "description": "The auth options for the search service."
-              }
-            }
-          },
-          "resources": [
-            {
-              "type": "Microsoft.Search/searchServices",
-              "apiVersion": "2023-11-01",
-              "name": "[parameters('name')]",
-              "location": "[parameters('location')]",
-              "tags": "[parameters('tags')]",
-              "identity": {
-                "type": "SystemAssigned"
-              },
-              "sku": {
-                "name": "[parameters('sku')]"
-              },
-              "properties": {
-                "replicaCount": "[parameters('replicaCount')]",
-                "partitionCount": "[parameters('partitionCount')]",
-                "hostingMode": "[parameters('hostingMode')]",
-                "authOptions": "[parameters('authOptions')]"
-              }
-            }
-          ],
-          "outputs": {
-            "id": {
-              "type": "string",
-              "value": "[resourceId('Microsoft.Search/searchServices', parameters('name'))]"
-            },
-            "name": {
-              "type": "string",
-              "value": "[parameters('name')]"
-            },
-            "endpoint": {
-              "type": "string",
-              "value": "[format('https://{0}.search.windows.net', parameters('name'))]"
+              "value": "[reference(resourceId('Microsoft.Resources/deployments', 'storageAccount'), '2025-04-01').outputs.id.value]"
             }
           }
         }
@@ -1502,7 +1002,7 @@
     },
     {
       "type": "Microsoft.Resources/deployments",
-      "apiVersion": "2022-09-01",
+      "apiVersion": "2025-04-01",
       "name": "appserviceplan",
       "properties": {
         "expressionEvaluationOptions": {
@@ -1536,8 +1036,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.37.4.10188",
-              "templateHash": "131702243748920682"
+              "version": "0.38.33.27573",
+              "templateHash": "9410530852624477624"
             },
             "description": "Creates an Azure App Service Plan"
           },
@@ -1611,7 +1111,7 @@
     },
     {
       "type": "Microsoft.Resources/deployments",
-      "apiVersion": "2022-09-01",
+      "apiVersion": "2025-04-01",
       "name": "api",
       "properties": {
         "expressionEvaluationOptions": {
@@ -1628,9 +1128,9 @@
           "tags": {
             "value": "[union(variables('tags'), createObject('azd-service-name', 'api'))]"
           },
-          "identityName": "[if(parameters('enableManagedIdentity'), createObject('value', format('{0}identity', replace(parameters('environmentName'), '-', ''))), createObject('value', ''))]",
+          "identityName": "[if(parameters('enableManagedIdentity'), createObject('value', format('{0}-mi', parameters('environmentName'))), createObject('value', ''))]",
           "appServicePlanId": {
-            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'appserviceplan'), '2022-09-01').outputs.id.value]"
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'appserviceplan'), '2025-04-01').outputs.id.value]"
           },
           "enableAIServices": {
             "value": "[variables('shouldEnableAI')]"
@@ -1639,22 +1139,16 @@
             "value": "[parameters('enableManagedIdentity')]"
           },
           "azureExistingAIProjectResourceId": {
-            "value": "[parameters('azureExistingAIProjectResourceId')]"
+            "value": "[variables('computedAIResourceId')]"
+          },
+          "aiFoundryEndpoint": {
+            "value": "[parameters('bFoundryEndpoint')]"
           },
           "chatDeploymentName": {
-            "value": "[parameters('chatDeploymentName')]"
+            "value": "[variables('effectiveChatDeploymentName')]"
           },
-          "aiSearchIndexName": {
-            "value": "[parameters('aiSearchIndexName')]"
-          },
-          "searchServiceEndpoint": {
-            "value": ""
-          },
-          "embeddingDeploymentName": {
-            "value": "[parameters('embeddingDeploymentName')]"
-          },
-          "embeddingDeploymentDimensions": {
-            "value": "[parameters('embeddingDeploymentDimensions')]"
+          "audioDeploymentName": {
+            "value": "[variables('effectiveAudioModelName')]"
           },
           "enableAzureMonitorTracing": {
             "value": "[parameters('enableAzureMonitorTracing')]"
@@ -1664,18 +1158,7 @@
           },
           "projectEndpoint": {
             "value": ""
-          },
-          "applicationInsightsName": "[if(variables('shouldEnableAppInsights'), if(not(empty(parameters('applicationInsightsName'))), createObject('value', parameters('applicationInsightsName')), createObject('value', format('{0}{1}', variables('abbrs').insightsComponents, variables('resourceToken')))), createObject('value', ''))]",
-          "enableKeyVault": {
-            "value": "[parameters('enableKeyVault')]"
-          },
-          "keyVaultName": {
-            "value": "[variables('resolvedKeyVaultName')]"
-          },
-          "azureInferenceEndpointReference": "[if(parameters('enableKeyVault'), createObject('value', format('@Microsoft.KeyVault(VaultName={0};SecretName=azure-ai-endpoint)', variables('resolvedKeyVaultName'))), createObject('value', ''))]",
-          "azureInferenceCredentialReference": "[if(parameters('enableKeyVault'), createObject('value', format('@Microsoft.KeyVault(VaultName={0};SecretName=azure-ai-api-key)', variables('resolvedKeyVaultName'))), createObject('value', ''))]",
-          "azureInferenceEndpoint": "[if(not(parameters('enableKeyVault')), createObject('value', parameters('externalAzureAIEndpoint')), createObject('value', ''))]",
-          "azureInferenceCredential": "[if(not(parameters('enableKeyVault')), createObject('value', parameters('externalAzureAIApiKey')), createObject('value', ''))]"
+          }
         },
         "template": {
           "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
@@ -1683,8 +1166,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.37.4.10188",
-              "templateHash": "11234812398078685195"
+              "version": "0.38.33.27573",
+              "templateHash": "5516789162284352705"
             }
           },
           "parameters": {
@@ -1718,23 +1201,15 @@
               "type": "string",
               "defaultValue": ""
             },
+            "aiFoundryEndpoint": {
+              "type": "string",
+              "defaultValue": ""
+            },
             "chatDeploymentName": {
               "type": "string",
               "defaultValue": ""
             },
-            "embeddingDeploymentName": {
-              "type": "string",
-              "defaultValue": ""
-            },
-            "aiSearchIndexName": {
-              "type": "string",
-              "defaultValue": ""
-            },
-            "embeddingDeploymentDimensions": {
-              "type": "string",
-              "defaultValue": ""
-            },
-            "searchServiceEndpoint": {
+            "audioDeploymentName": {
               "type": "string",
               "defaultValue": ""
             },
@@ -1749,46 +1224,10 @@
             "projectEndpoint": {
               "type": "string",
               "defaultValue": ""
-            },
-            "applicationInsightsName": {
-              "type": "string",
-              "defaultValue": ""
-            },
-            "azureInferenceEndpoint": {
-              "type": "string",
-              "defaultValue": ""
-            },
-            "azureInferenceCredential": {
-              "type": "string",
-              "defaultValue": ""
-            },
-            "enableKeyVault": {
-              "type": "bool",
-              "defaultValue": false
-            },
-            "keyVaultName": {
-              "type": "string",
-              "defaultValue": ""
-            },
-            "azureInferenceEndpointReference": {
-              "type": "string",
-              "defaultValue": ""
-            },
-            "azureInferenceCredentialReference": {
-              "type": "string",
-              "defaultValue": ""
             }
           },
           "variables": {
             "baseEnv": [
-              {
-                "name": "RUNNING_IN_PRODUCTION",
-                "value": "true"
-              },
-              {
-                "name": "ENVIRONMENT",
-                "value": "azure"
-              },
               {
                 "name": "FLASK_APP",
                 "value": "app.py"
@@ -1804,10 +1243,6 @@
               {
                 "name": "WEBSITE_WEBDEPLOY_USE_SCM",
                 "value": "true"
-              },
-              {
-                "name": "PORT",
-                "value": "8000"
               },
               {
                 "name": "PYTHONPATH",
@@ -1826,9 +1261,10 @@
                 "value": "true"
               }
             ],
-            "azureCredentialsEnv": "[if(and(parameters('enableKeyVault'), or(not(empty(parameters('azureInferenceEndpointReference'))), not(empty(parameters('azureInferenceCredentialReference'))))), createArray(createObject('name', 'AZURE_INFERENCE_ENDPOINT', 'value', if(not(empty(parameters('azureInferenceEndpointReference'))), parameters('azureInferenceEndpointReference'), '')), createObject('name', 'AZURE_INFERENCE_CREDENTIAL', 'value', if(not(empty(parameters('azureInferenceCredentialReference'))), parameters('azureInferenceCredentialReference'), '')), createObject('name', 'KEY_VAULT_NAME', 'value', parameters('keyVaultName')), createObject('name', 'USE_KEY_VAULT', 'value', 'true')), if(and(not(empty(parameters('azureInferenceEndpoint'))), not(empty(parameters('azureInferenceCredential')))), createArray(createObject('name', 'AZURE_INFERENCE_ENDPOINT', 'value', parameters('azureInferenceEndpoint')), createObject('name', 'AZURE_INFERENCE_CREDENTIAL', 'value', parameters('azureInferenceCredential')), createObject('name', 'USE_KEY_VAULT', 'value', 'false')), createArray(createObject('name', 'USE_KEY_VAULT', 'value', if(parameters('enableKeyVault'), 'true', 'false')), createObject('name', 'KEY_VAULT_NAME', 'value', parameters('keyVaultName')))))]",
-            "aiEnv": "[if(parameters('enableAIServices'), createArray(createObject('name', 'AZURE_EXISTING_AIPROJECT_RESOURCE_ID', 'value', parameters('azureExistingAIProjectResourceId')), createObject('name', 'AZURE_AI_CHAT_DEPLOYMENT_NAME', 'value', parameters('chatDeploymentName')), createObject('name', 'AZURE_AI_EMBED_DEPLOYMENT_NAME', 'value', parameters('embeddingDeploymentName')), createObject('name', 'AZURE_AI_SEARCH_INDEX_NAME', 'value', parameters('aiSearchIndexName')), createObject('name', 'AZURE_AI_EMBED_DIMENSIONS', 'value', parameters('embeddingDeploymentDimensions')), createObject('name', 'AZURE_AI_SEARCH_ENDPOINT', 'value', parameters('searchServiceEndpoint')), createObject('name', 'ENABLE_AZURE_MONITOR_TRACING', 'value', string(parameters('enableAzureMonitorTracing'))), createObject('name', 'AZURE_TRACING_GEN_AI_CONTENT_RECORDING_ENABLED', 'value', string(parameters('azureTracingGenAIContentRecordingEnabled'))), createObject('name', 'AZURE_EXISTING_AIPROJECT_ENDPOINT', 'value', parameters('projectEndpoint'))), createArray())]",
-            "env": "[concat(concat(variables('baseEnv'), variables('aiEnv')), variables('azureCredentialsEnv'))]",
+            "infrastructureEnv": [],
+            "hasAIConfig": "[or(parameters('enableAIServices'), or(not(empty(parameters('aiFoundryEndpoint'))), not(empty(parameters('chatDeploymentName')))))]",
+            "aiEnv": "[if(variables('hasAIConfig'), createArray(createObject('name', 'AZURE_EXISTING_AIPROJECT_RESOURCE_ID', 'value', parameters('azureExistingAIProjectResourceId')), createObject('name', 'EXISTING_AI_FOUNDRY_ENDPOINT', 'value', parameters('aiFoundryEndpoint')), createObject('name', 'AZURE_INFERENCE_ENDPOINT', 'value', parameters('aiFoundryEndpoint')), createObject('name', 'AZURE_CLIENT_ID', 'value', 'system-assigned-managed-identity'), createObject('name', 'AZURE_AI_CHAT_DEPLOYMENT_NAME', 'value', parameters('chatDeploymentName')), createObject('name', 'AZURE_AI_AUDIO_DEPLOYMENT_NAME', 'value', parameters('audioDeploymentName')), createObject('name', 'ENABLE_AZURE_MONITOR_TRACING', 'value', string(parameters('enableAzureMonitorTracing'))), createObject('name', 'AZURE_TRACING_GEN_AI_CONTENT_RECORDING_ENABLED', 'value', string(parameters('azureTracingGenAIContentRecordingEnabled'))), createObject('name', 'AZURE_EXISTING_AIPROJECT_ENDPOINT', 'value', parameters('projectEndpoint'))), createArray())]",
+            "env": "[concat(concat(variables('baseEnv'), variables('aiEnv')), variables('infrastructureEnv'))]",
             "appSettings": "[reduce(variables('env'), createObject(), lambda('acc', 'curr', union(lambdaVariables('acc'), createObject(format('{0}', lambdaVariables('curr').name), lambdaVariables('curr').value))))]"
           },
           "resources": [
@@ -1841,7 +1277,7 @@
             },
             {
               "type": "Microsoft.Resources/deployments",
-              "apiVersion": "2022-09-01",
+              "apiVersion": "2025-04-01",
               "name": "appservice",
               "properties": {
                 "expressionEvaluationOptions": {
@@ -1899,8 +1335,8 @@
                   "metadata": {
                     "_generator": {
                       "name": "bicep",
-                      "version": "0.37.4.10188",
-                      "templateHash": "444150027392878415"
+                      "version": "0.38.33.27573",
+                      "templateHash": "13421784193254680722"
                     },
                     "description": "Creates an Azure App Service in an existing Azure App Service plan."
                   },
@@ -2093,7 +1529,7 @@
                     },
                     {
                       "type": "Microsoft.Resources/deployments",
-                      "apiVersion": "2022-09-01",
+                      "apiVersion": "2025-04-01",
                       "name": "[format('{0}-appSettings', parameters('name'))]",
                       "properties": {
                         "expressionEvaluationOptions": {
@@ -2114,8 +1550,8 @@
                           "metadata": {
                             "_generator": {
                               "name": "bicep",
-                              "version": "0.37.4.10188",
-                              "templateHash": "13724515520832176081"
+                              "version": "0.38.33.27573",
+                              "templateHash": "16818702544742325324"
                             },
                             "description": "Updates app settings for an Azure App Service."
                           },
@@ -2171,27 +1607,30 @@
               "type": "object",
               "value": {
                 "enableManagedIdentity": "[parameters('enableManagedIdentity')]",
-                "identityPrincipalIdLength": "[if(parameters('enableManagedIdentity'), length(reference(resourceId('Microsoft.Resources/deployments', 'appservice'), '2022-09-01').outputs.identityPrincipalId.value), 0)]",
-                "enableKeyVault": "[parameters('enableKeyVault')]",
-                "keyVaultName": "[parameters('keyVaultName')]"
+                "identityPrincipalIdLength": "[if(parameters('enableManagedIdentity'), length(reference(resourceId('Microsoft.Resources/deployments', 'appservice'), '2025-04-01').outputs.identityPrincipalId.value), 0)]",
+                "enableAIServices": "[parameters('enableAIServices')]",
+                "hasAIConfig": "[variables('hasAIConfig')]",
+                "aiFoundryEndpoint": "[parameters('aiFoundryEndpoint')]",
+                "chatDeploymentName": "[parameters('chatDeploymentName')]",
+                "audioDeploymentName": "[parameters('audioDeploymentName')]"
               }
             },
             "SERVICE_API_IDENTITY_PRINCIPAL_ID": {
               "type": "string",
-              "value": "[if(parameters('enableManagedIdentity'), reference(resourceId('Microsoft.Resources/deployments', 'appservice'), '2022-09-01').outputs.identityPrincipalId.value, '')]"
+              "value": "[if(parameters('enableManagedIdentity'), reference(resourceId('Microsoft.Resources/deployments', 'appservice'), '2025-04-01').outputs.identityPrincipalId.value, '')]"
             },
             "SERVICE_API_NAME": {
               "type": "string",
-              "value": "[reference(resourceId('Microsoft.Resources/deployments', 'appservice'), '2022-09-01').outputs.name.value]"
+              "value": "[reference(resourceId('Microsoft.Resources/deployments', 'appservice'), '2025-04-01').outputs.name.value]"
             },
             "SERVICE_API_URI": {
               "type": "string",
-              "value": "[reference(resourceId('Microsoft.Resources/deployments', 'appservice'), '2022-09-01').outputs.uri.value]"
+              "value": "[reference(resourceId('Microsoft.Resources/deployments', 'appservice'), '2025-04-01').outputs.uri.value]"
             },
             "SERVICE_API_ENDPOINTS": {
               "type": "array",
               "value": [
-                "[reference(resourceId('Microsoft.Resources/deployments', 'appservice'), '2022-09-01').outputs.uri.value]"
+                "[reference(resourceId('Microsoft.Resources/deployments', 'appservice'), '2025-04-01').outputs.uri.value]"
               ]
             }
           }
@@ -2202,331 +1641,9 @@
       ]
     },
     {
-      "condition": "[parameters('enableKeyVault')]",
+      "condition": "[and(variables('shouldEnableAI'), not(empty(parameters('principalId'))))]",
       "type": "Microsoft.Resources/deployments",
-      "apiVersion": "2022-09-01",
-      "name": "keyvault",
-      "properties": {
-        "expressionEvaluationOptions": {
-          "scope": "inner"
-        },
-        "mode": "Incremental",
-        "parameters": {
-          "name": {
-            "value": "[variables('resolvedKeyVaultName')]"
-          },
-          "location": {
-            "value": "[parameters('location')]"
-          },
-          "tags": {
-            "value": "[variables('tags')]"
-          },
-          "principalId": {
-            "value": "[parameters('principalId')]"
-          },
-          "appServicePrincipalId": "[if(parameters('enableManagedIdentity'), createObject('value', reference(resourceId('Microsoft.Resources/deployments', 'api'), '2022-09-01').outputs.SERVICE_API_IDENTITY_PRINCIPAL_ID.value), createObject('value', ''))]",
-          "azureAIEndpoint": {
-            "value": ""
-          },
-          "azureAIApiKey": {
-            "value": ""
-          }
-        },
-        "template": {
-          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
-          "contentVersion": "1.0.0.0",
-          "metadata": {
-            "_generator": {
-              "name": "bicep",
-              "version": "0.37.4.10188",
-              "templateHash": "5737513978107524099"
-            }
-          },
-          "parameters": {
-            "name": {
-              "type": "string",
-              "metadata": {
-                "description": "Name of the Azure Key Vault"
-              }
-            },
-            "location": {
-              "type": "string",
-              "defaultValue": "[resourceGroup().location]",
-              "metadata": {
-                "description": "Location for all resources"
-              }
-            },
-            "tags": {
-              "type": "object",
-              "defaultValue": {},
-              "metadata": {
-                "description": "Tags to apply to all resources"
-              }
-            },
-            "principalId": {
-              "type": "string",
-              "defaultValue": "",
-              "metadata": {
-                "description": "Principal ID of the user or service principal to grant access"
-              }
-            },
-            "appServicePrincipalId": {
-              "type": "string",
-              "defaultValue": "",
-              "metadata": {
-                "description": "Principal ID of the App Service Managed Identity (optional)"
-              }
-            },
-            "enableRbacAuthorization": {
-              "type": "bool",
-              "defaultValue": true,
-              "metadata": {
-                "description": "Enable RBAC authorization instead of access policies"
-              }
-            },
-            "enableSoftDelete": {
-              "type": "bool",
-              "defaultValue": true,
-              "metadata": {
-                "description": "Enable soft delete for the Key Vault"
-              }
-            },
-            "softDeleteRetentionInDays": {
-              "type": "int",
-              "defaultValue": 90,
-              "metadata": {
-                "description": "Soft delete retention days"
-              }
-            },
-            "enablePurgeProtection": {
-              "type": "bool",
-              "defaultValue": false,
-              "metadata": {
-                "description": "Enable purge protection"
-              }
-            },
-            "enablePublicNetworkAccess": {
-              "type": "bool",
-              "defaultValue": true,
-              "metadata": {
-                "description": "Enable public network access"
-              }
-            },
-            "sku": {
-              "type": "string",
-              "defaultValue": "standard",
-              "allowedValues": [
-                "standard",
-                "premium"
-              ],
-              "metadata": {
-                "description": "SKU of the Key Vault"
-              }
-            },
-            "azureAIEndpoint": {
-              "type": "string",
-              "defaultValue": "",
-              "metadata": {
-                "description": "Azure AI endpoint URL"
-              }
-            },
-            "azureAIApiKey": {
-              "type": "securestring",
-              "defaultValue": "",
-              "metadata": {
-                "description": "Azure AI API key"
-              }
-            }
-          },
-          "resources": [
-            {
-              "type": "Microsoft.KeyVault/vaults",
-              "apiVersion": "2023-07-01",
-              "name": "[parameters('name')]",
-              "location": "[parameters('location')]",
-              "tags": "[parameters('tags')]",
-              "properties": {
-                "sku": {
-                  "family": "A",
-                  "name": "[parameters('sku')]"
-                },
-                "tenantId": "[tenant().tenantId]",
-                "enabledForDeployment": false,
-                "enabledForDiskEncryption": false,
-                "enabledForTemplateDeployment": true,
-                "enableSoftDelete": "[parameters('enableSoftDelete')]",
-                "softDeleteRetentionInDays": "[parameters('softDeleteRetentionInDays')]",
-                "enablePurgeProtection": "[if(parameters('enablePurgeProtection'), true(), null())]",
-                "publicNetworkAccess": "[if(parameters('enablePublicNetworkAccess'), 'Enabled', 'Disabled')]",
-                "enableRbacAuthorization": "[parameters('enableRbacAuthorization')]",
-                "accessPolicies": "[if(parameters('enableRbacAuthorization'), createArray(), concat(createArray(createObject('tenantId', tenant().tenantId, 'objectId', parameters('principalId'), 'permissions', createObject('keys', createArray(), 'secrets', createArray('get', 'list', 'set', 'delete', 'recover'), 'certificates', createArray()))), if(not(empty(parameters('appServicePrincipalId'))), createArray(createObject('tenantId', tenant().tenantId, 'objectId', parameters('appServicePrincipalId'), 'permissions', createObject('keys', createArray(), 'secrets', createArray('get', 'list'), 'certificates', createArray()))), createArray())))]"
-              }
-            },
-            {
-              "condition": "[not(empty(parameters('azureAIEndpoint')))]",
-              "type": "Microsoft.KeyVault/vaults/secrets",
-              "apiVersion": "2023-07-01",
-              "name": "[format('{0}/{1}', parameters('name'), 'azure-ai-endpoint')]",
-              "properties": {
-                "value": "[parameters('azureAIEndpoint')]",
-                "contentType": "Azure AI Inference Endpoint URL"
-              },
-              "dependsOn": [
-                "[resourceId('Microsoft.KeyVault/vaults', parameters('name'))]"
-              ]
-            },
-            {
-              "condition": "[not(empty(parameters('azureAIApiKey')))]",
-              "type": "Microsoft.KeyVault/vaults/secrets",
-              "apiVersion": "2023-07-01",
-              "name": "[format('{0}/{1}', parameters('name'), 'azure-ai-api-key')]",
-              "properties": {
-                "value": "[parameters('azureAIApiKey')]",
-                "contentType": "Azure AI Inference API Key"
-              },
-              "dependsOn": [
-                "[resourceId('Microsoft.KeyVault/vaults', parameters('name'))]"
-              ]
-            }
-          ],
-          "outputs": {
-            "DEBUG_KEYVAULT": {
-              "type": "object",
-              "value": {
-                "enableRbacAuthorization": "[parameters('enableRbacAuthorization')]",
-                "principalIdProvided": "[not(empty(parameters('principalId')))]",
-                "principalIdLength": "[length(parameters('principalId'))]",
-                "azureAIEndpointProvided": "[not(empty(parameters('azureAIEndpoint')))]",
-                "tenantId": "[tenant().tenantId]"
-              }
-            },
-            "keyVaultId": {
-              "type": "string",
-              "value": "[resourceId('Microsoft.KeyVault/vaults', parameters('name'))]"
-            },
-            "keyVaultName": {
-              "type": "string",
-              "value": "[parameters('name')]"
-            },
-            "keyVaultUri": {
-              "type": "string",
-              "value": "[reference(resourceId('Microsoft.KeyVault/vaults', parameters('name')), '2023-07-01').vaultUri]"
-            },
-            "endpointKeyVaultReference": {
-              "type": "string",
-              "value": "[format('@Microsoft.KeyVault(VaultName={0};SecretName=azure-ai-endpoint)', parameters('name'))]"
-            },
-            "apiKeyKeyVaultReference": {
-              "type": "string",
-              "value": "[format('@Microsoft.KeyVault(VaultName={0};SecretName=azure-ai-api-key)', parameters('name'))]"
-            },
-            "hasEndpointSecret": {
-              "type": "bool",
-              "value": "[not(empty(parameters('azureAIEndpoint')))]"
-            }
-          }
-        }
-      },
-      "dependsOn": [
-        "[resourceId('Microsoft.Resources/deployments', 'api')]"
-      ]
-    },
-    {
-      "condition": "[and(parameters('enableKeyVault'), not(empty(parameters('externalAzureAIEndpoint'))))]",
-      "type": "Microsoft.Resources/deployments",
-      "apiVersion": "2022-09-01",
-      "name": "keyvault-secrets",
-      "properties": {
-        "expressionEvaluationOptions": {
-          "scope": "inner"
-        },
-        "mode": "Incremental",
-        "parameters": {
-          "keyVaultName": {
-            "value": "[variables('resolvedKeyVaultName')]"
-          },
-          "azureAIEndpoint": {
-            "value": "[parameters('externalAzureAIEndpoint')]"
-          },
-          "azureAIApiKey": {
-            "value": "[parameters('externalAzureAIApiKey')]"
-          }
-        },
-        "template": {
-          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
-          "contentVersion": "1.0.0.0",
-          "metadata": {
-            "_generator": {
-              "name": "bicep",
-              "version": "0.37.4.10188",
-              "templateHash": "6308579965808304619"
-            }
-          },
-          "parameters": {
-            "keyVaultName": {
-              "type": "string",
-              "metadata": {
-                "description": "Name of the existing Key Vault"
-              }
-            },
-            "azureAIEndpoint": {
-              "type": "string",
-              "defaultValue": "",
-              "metadata": {
-                "description": "Azure AI endpoint URL"
-              }
-            },
-            "azureAIApiKey": {
-              "type": "securestring",
-              "defaultValue": "",
-              "metadata": {
-                "description": "Azure AI API key"
-              }
-            }
-          },
-          "resources": [
-            {
-              "condition": "[not(empty(parameters('azureAIEndpoint')))]",
-              "type": "Microsoft.KeyVault/vaults/secrets",
-              "apiVersion": "2023-07-01",
-              "name": "[format('{0}/{1}', parameters('keyVaultName'), 'azure-ai-endpoint')]",
-              "properties": {
-                "value": "[parameters('azureAIEndpoint')]",
-                "contentType": "Azure AI Inference Endpoint URL"
-              }
-            },
-            {
-              "condition": "[not(empty(parameters('azureAIApiKey')))]",
-              "type": "Microsoft.KeyVault/vaults/secrets",
-              "apiVersion": "2023-07-01",
-              "name": "[format('{0}/{1}', parameters('keyVaultName'), 'azure-ai-api-key')]",
-              "properties": {
-                "value": "[parameters('azureAIApiKey')]",
-                "contentType": "Azure AI Inference API Key"
-              }
-            }
-          ],
-          "outputs": {
-            "endpointSecretCreated": {
-              "type": "bool",
-              "value": "[not(empty(parameters('azureAIEndpoint')))]"
-            },
-            "secretsProcessed": {
-              "type": "bool",
-              "value": true
-            }
-          }
-        }
-      },
-      "dependsOn": [
-        "[resourceId('Microsoft.Resources/deployments', 'api')]",
-        "[resourceId('Microsoft.Resources/deployments', 'keyvault')]"
-      ]
-    },
-    {
-      "condition": "[variables('shouldEnableAI')]",
-      "type": "Microsoft.Resources/deployments",
-      "apiVersion": "2022-09-01",
+      "apiVersion": "2025-04-01",
       "name": "user-role-azureai-developer",
       "properties": {
         "expressionEvaluationOptions": {
@@ -2550,8 +1667,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.37.4.10188",
-              "templateHash": "4935662338957911822"
+              "version": "0.38.33.27573",
+              "templateHash": "1371346527966686653"
             },
             "description": "Creates a role assignment for a given principal and role definition."
           },
@@ -2607,347 +1724,9 @@
       }
     },
     {
-      "condition": "[parameters('useSearchService')]",
+      "condition": "[and(variables('shouldProvisionNewAI'), parameters('enableManagedIdentity'))]",
       "type": "Microsoft.Resources/deployments",
-      "apiVersion": "2022-09-01",
-      "name": "user-role-search-index-data-reader",
-      "properties": {
-        "expressionEvaluationOptions": {
-          "scope": "inner"
-        },
-        "mode": "Incremental",
-        "parameters": {
-          "principalType": {
-            "value": "[variables('runnerPrincipalType')]"
-          },
-          "principalId": {
-            "value": "[parameters('principalId')]"
-          },
-          "roleDefinitionId": {
-            "value": "1407120a-92aa-4202-b7e9-c0e197c71c8f"
-          }
-        },
-        "template": {
-          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
-          "contentVersion": "1.0.0.0",
-          "metadata": {
-            "_generator": {
-              "name": "bicep",
-              "version": "0.37.4.10188",
-              "templateHash": "4935662338957911822"
-            },
-            "description": "Creates a role assignment for a given principal and role definition."
-          },
-          "parameters": {
-            "principalId": {
-              "type": "string",
-              "metadata": {
-                "description": "The principal ID to assign the role to"
-              }
-            },
-            "roleDefinitionId": {
-              "type": "string",
-              "metadata": {
-                "description": "The role definition ID to assign"
-              }
-            },
-            "principalType": {
-              "type": "string",
-              "metadata": {
-                "description": "The type of principal (User, ServicePrincipal, Group, etc.)"
-              }
-            },
-            "resourceId": {
-              "type": "string",
-              "defaultValue": "",
-              "metadata": {
-                "description": "The resource ID to assign the role to. If not provided, the assignment will be at the current scope."
-              }
-            }
-          },
-          "variables": {
-            "roleAssignmentName": "[guid(parameters('principalId'), parameters('roleDefinitionId'), parameters('resourceId'))]"
-          },
-          "resources": [
-            {
-              "type": "Microsoft.Authorization/roleAssignments",
-              "apiVersion": "2022-04-01",
-              "name": "[variables('roleAssignmentName')]",
-              "properties": {
-                "principalId": "[parameters('principalId')]",
-                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', parameters('roleDefinitionId'))]",
-                "principalType": "[parameters('principalType')]"
-              }
-            }
-          ],
-          "outputs": {
-            "id": {
-              "type": "string",
-              "value": "[resourceId('Microsoft.Authorization/roleAssignments', variables('roleAssignmentName'))]"
-            }
-          }
-        }
-      }
-    },
-    {
-      "condition": "[parameters('useSearchService')]",
-      "type": "Microsoft.Resources/deployments",
-      "apiVersion": "2022-09-01",
-      "name": "api-role-search-index-data-reader",
-      "properties": {
-        "expressionEvaluationOptions": {
-          "scope": "inner"
-        },
-        "mode": "Incremental",
-        "parameters": {
-          "principalType": {
-            "value": "ServicePrincipal"
-          },
-          "principalId": {
-            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'api'), '2022-09-01').outputs.SERVICE_API_IDENTITY_PRINCIPAL_ID.value]"
-          },
-          "roleDefinitionId": {
-            "value": "1407120a-92aa-4202-b7e9-c0e197c71c8f"
-          }
-        },
-        "template": {
-          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
-          "contentVersion": "1.0.0.0",
-          "metadata": {
-            "_generator": {
-              "name": "bicep",
-              "version": "0.37.4.10188",
-              "templateHash": "4935662338957911822"
-            },
-            "description": "Creates a role assignment for a given principal and role definition."
-          },
-          "parameters": {
-            "principalId": {
-              "type": "string",
-              "metadata": {
-                "description": "The principal ID to assign the role to"
-              }
-            },
-            "roleDefinitionId": {
-              "type": "string",
-              "metadata": {
-                "description": "The role definition ID to assign"
-              }
-            },
-            "principalType": {
-              "type": "string",
-              "metadata": {
-                "description": "The type of principal (User, ServicePrincipal, Group, etc.)"
-              }
-            },
-            "resourceId": {
-              "type": "string",
-              "defaultValue": "",
-              "metadata": {
-                "description": "The resource ID to assign the role to. If not provided, the assignment will be at the current scope."
-              }
-            }
-          },
-          "variables": {
-            "roleAssignmentName": "[guid(parameters('principalId'), parameters('roleDefinitionId'), parameters('resourceId'))]"
-          },
-          "resources": [
-            {
-              "type": "Microsoft.Authorization/roleAssignments",
-              "apiVersion": "2022-04-01",
-              "name": "[variables('roleAssignmentName')]",
-              "properties": {
-                "principalId": "[parameters('principalId')]",
-                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', parameters('roleDefinitionId'))]",
-                "principalType": "[parameters('principalType')]"
-              }
-            }
-          ],
-          "outputs": {
-            "id": {
-              "type": "string",
-              "value": "[resourceId('Microsoft.Authorization/roleAssignments', variables('roleAssignmentName'))]"
-            }
-          }
-        }
-      },
-      "dependsOn": [
-        "[resourceId('Microsoft.Resources/deployments', 'api')]"
-      ]
-    },
-    {
-      "condition": "[parameters('useSearchService')]",
-      "type": "Microsoft.Resources/deployments",
-      "apiVersion": "2022-09-01",
-      "name": "user-role-search-service-contributor",
-      "properties": {
-        "expressionEvaluationOptions": {
-          "scope": "inner"
-        },
-        "mode": "Incremental",
-        "parameters": {
-          "principalType": {
-            "value": "[variables('runnerPrincipalType')]"
-          },
-          "principalId": {
-            "value": "[parameters('principalId')]"
-          },
-          "roleDefinitionId": {
-            "value": "7ca78c08-252a-4471-8644-bb5ff32d4ba0"
-          }
-        },
-        "template": {
-          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
-          "contentVersion": "1.0.0.0",
-          "metadata": {
-            "_generator": {
-              "name": "bicep",
-              "version": "0.37.4.10188",
-              "templateHash": "4935662338957911822"
-            },
-            "description": "Creates a role assignment for a given principal and role definition."
-          },
-          "parameters": {
-            "principalId": {
-              "type": "string",
-              "metadata": {
-                "description": "The principal ID to assign the role to"
-              }
-            },
-            "roleDefinitionId": {
-              "type": "string",
-              "metadata": {
-                "description": "The role definition ID to assign"
-              }
-            },
-            "principalType": {
-              "type": "string",
-              "metadata": {
-                "description": "The type of principal (User, ServicePrincipal, Group, etc.)"
-              }
-            },
-            "resourceId": {
-              "type": "string",
-              "defaultValue": "",
-              "metadata": {
-                "description": "The resource ID to assign the role to. If not provided, the assignment will be at the current scope."
-              }
-            }
-          },
-          "variables": {
-            "roleAssignmentName": "[guid(parameters('principalId'), parameters('roleDefinitionId'), parameters('resourceId'))]"
-          },
-          "resources": [
-            {
-              "type": "Microsoft.Authorization/roleAssignments",
-              "apiVersion": "2022-04-01",
-              "name": "[variables('roleAssignmentName')]",
-              "properties": {
-                "principalId": "[parameters('principalId')]",
-                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', parameters('roleDefinitionId'))]",
-                "principalType": "[parameters('principalType')]"
-              }
-            }
-          ],
-          "outputs": {
-            "id": {
-              "type": "string",
-              "value": "[resourceId('Microsoft.Authorization/roleAssignments', variables('roleAssignmentName'))]"
-            }
-          }
-        }
-      }
-    },
-    {
-      "condition": "[parameters('useSearchService')]",
-      "type": "Microsoft.Resources/deployments",
-      "apiVersion": "2022-09-01",
-      "name": "api-role-search-service-contributor",
-      "properties": {
-        "expressionEvaluationOptions": {
-          "scope": "inner"
-        },
-        "mode": "Incremental",
-        "parameters": {
-          "principalType": {
-            "value": "ServicePrincipal"
-          },
-          "principalId": {
-            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'api'), '2022-09-01').outputs.SERVICE_API_IDENTITY_PRINCIPAL_ID.value]"
-          },
-          "roleDefinitionId": {
-            "value": "7ca78c08-252a-4471-8644-bb5ff32d4ba0"
-          }
-        },
-        "template": {
-          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
-          "contentVersion": "1.0.0.0",
-          "metadata": {
-            "_generator": {
-              "name": "bicep",
-              "version": "0.37.4.10188",
-              "templateHash": "4935662338957911822"
-            },
-            "description": "Creates a role assignment for a given principal and role definition."
-          },
-          "parameters": {
-            "principalId": {
-              "type": "string",
-              "metadata": {
-                "description": "The principal ID to assign the role to"
-              }
-            },
-            "roleDefinitionId": {
-              "type": "string",
-              "metadata": {
-                "description": "The role definition ID to assign"
-              }
-            },
-            "principalType": {
-              "type": "string",
-              "metadata": {
-                "description": "The type of principal (User, ServicePrincipal, Group, etc.)"
-              }
-            },
-            "resourceId": {
-              "type": "string",
-              "defaultValue": "",
-              "metadata": {
-                "description": "The resource ID to assign the role to. If not provided, the assignment will be at the current scope."
-              }
-            }
-          },
-          "variables": {
-            "roleAssignmentName": "[guid(parameters('principalId'), parameters('roleDefinitionId'), parameters('resourceId'))]"
-          },
-          "resources": [
-            {
-              "type": "Microsoft.Authorization/roleAssignments",
-              "apiVersion": "2022-04-01",
-              "name": "[variables('roleAssignmentName')]",
-              "properties": {
-                "principalId": "[parameters('principalId')]",
-                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', parameters('roleDefinitionId'))]",
-                "principalType": "[parameters('principalType')]"
-              }
-            }
-          ],
-          "outputs": {
-            "id": {
-              "type": "string",
-              "value": "[resourceId('Microsoft.Authorization/roleAssignments', variables('roleAssignmentName'))]"
-            }
-          }
-        }
-      },
-      "dependsOn": [
-        "[resourceId('Microsoft.Resources/deployments', 'api')]"
-      ]
-    },
-    {
-      "condition": "[and(variables('shouldEnableAI'), parameters('enableManagedIdentity'))]",
-      "type": "Microsoft.Resources/deployments",
-      "apiVersion": "2022-09-01",
+      "apiVersion": "2025-04-01",
       "name": "api-role-azureai-developer",
       "properties": {
         "expressionEvaluationOptions": {
@@ -2959,7 +1738,7 @@
             "value": "ServicePrincipal"
           },
           "principalId": {
-            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'api'), '2022-09-01').outputs.SERVICE_API_IDENTITY_PRINCIPAL_ID.value]"
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'api'), '2025-04-01').outputs.SERVICE_API_IDENTITY_PRINCIPAL_ID.value]"
           },
           "roleDefinitionId": {
             "value": "64702f94-c441-49e6-a78b-ef80e0188fee"
@@ -2971,8 +1750,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.37.4.10188",
-              "templateHash": "4935662338957911822"
+              "version": "0.38.33.27573",
+              "templateHash": "1371346527966686653"
             },
             "description": "Creates a role assignment for a given principal and role definition."
           },
@@ -3031,24 +1810,21 @@
       ]
     },
     {
-      "condition": "[and(parameters('enableKeyVault'), parameters('enableManagedIdentity'))]",
+      "condition": "[and(variables('shouldUseExistingAI'), parameters('enableManagedIdentity'))]",
       "type": "Microsoft.Resources/deployments",
-      "apiVersion": "2022-09-01",
-      "name": "api-role-keyvault-secrets-officer",
+      "apiVersion": "2025-04-01",
+      "name": "existing-ai-rbac-instructions",
       "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
         },
         "mode": "Incremental",
         "parameters": {
-          "principalType": {
-            "value": "ServicePrincipal"
+          "aiFoundryResourceId": {
+            "value": "[variables('computedAIResourceId')]"
           },
-          "principalId": {
-            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'api'), '2022-09-01').outputs.SERVICE_API_IDENTITY_PRINCIPAL_ID.value]"
-          },
-          "roleDefinitionId": {
-            "value": "b86a8fe4-44ce-4948-aee5-eccb2c155cd7"
+          "appServicePrincipalId": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'api'), '2025-04-01').outputs.SERVICE_API_IDENTITY_PRINCIPAL_ID.value]"
           }
         },
         "template": {
@@ -3057,57 +1833,38 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.37.4.10188",
-              "templateHash": "4935662338957911822"
+              "version": "0.38.33.27573",
+              "templateHash": "4535156078739811206"
             },
-            "description": "Creates a role assignment for a given principal and role definition."
+            "description": "Note: This module is a placeholder. RBAC for existing AI Foundry resources should be configured manually or through the Azure portal/CLI after deployment."
           },
           "parameters": {
-            "principalId": {
+            "aiFoundryResourceId": {
               "type": "string",
               "metadata": {
-                "description": "The principal ID to assign the role to"
+                "description": "Resource ID of the existing Azure AI Foundry service"
               }
             },
-            "roleDefinitionId": {
+            "appServicePrincipalId": {
               "type": "string",
               "metadata": {
-                "description": "The role definition ID to assign"
-              }
-            },
-            "principalType": {
-              "type": "string",
-              "metadata": {
-                "description": "The type of principal (User, ServicePrincipal, Group, etc.)"
-              }
-            },
-            "resourceId": {
-              "type": "string",
-              "defaultValue": "",
-              "metadata": {
-                "description": "The resource ID to assign the role to. If not provided, the assignment will be at the current scope."
+                "description": "Principal ID of the App Service Managed Identity"
               }
             }
           },
-          "variables": {
-            "roleAssignmentName": "[guid(parameters('principalId'), parameters('roleDefinitionId'), parameters('resourceId'))]"
-          },
-          "resources": [
-            {
-              "type": "Microsoft.Authorization/roleAssignments",
-              "apiVersion": "2022-04-01",
-              "name": "[variables('roleAssignmentName')]",
-              "properties": {
-                "principalId": "[parameters('principalId')]",
-                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', parameters('roleDefinitionId'))]",
-                "principalType": "[parameters('principalType')]"
-              }
-            }
-          ],
+          "resources": [],
           "outputs": {
-            "id": {
+            "aiFoundryResourceId": {
               "type": "string",
-              "value": "[resourceId('Microsoft.Authorization/roleAssignments', variables('roleAssignmentName'))]"
+              "value": "[parameters('aiFoundryResourceId')]"
+            },
+            "appServicePrincipalId": {
+              "type": "string",
+              "value": "[parameters('appServicePrincipalId')]"
+            },
+            "instructions": {
+              "type": "string",
+              "value": "[format('Run: az role assignment create --role \"Cognitive Services OpenAI User\" --assignee {0} --scope {1}', parameters('appServicePrincipalId'), parameters('aiFoundryResourceId'))]"
             }
           }
         }
@@ -3121,22 +1878,35 @@
     "DEBUG_PARAMETERS": {
       "type": "object",
       "value": {
-        "enableKeyVault": "[parameters('enableKeyVault')]",
         "enableManagedIdentity": "[parameters('enableManagedIdentity')]",
         "principalIdProvided": "[not(empty(parameters('principalId')))]",
         "principalIdLength": "[length(parameters('principalId'))]",
-        "resolvedKeyVaultName": "[variables('resolvedKeyVaultName')]",
-        "externalAzureAIEndpointProvided": "[not(empty(parameters('externalAzureAIEndpoint')))]",
-        "keyVaultSecretsModuleDeployed": "[and(parameters('enableKeyVault'), not(empty(parameters('externalAzureAIEndpoint'))))]"
+        "externalAzureAIEndpointProvided": "[not(empty(parameters('externalAzureAIEndpoint')))]"
       }
     },
-    "DEBUG_KEYVAULT_FIRST_DEPLOYMENT": {
+    "DEBUG_RESOURCE_NAMES": {
       "type": "object",
       "value": {
-        "step1_keyVault": "[if(parameters('enableKeyVault'), 'Deployed first (no app dependency)', 'Disabled')]",
-        "step2_appService": "Deployed after KeyVault",
-        "step3_secrets": "[if(and(parameters('enableKeyVault'), not(empty(parameters('externalAzureAIEndpoint')))), 'Will populate after app', 'No endpoint provided')]",
-        "step4_roleAssignments": "RBAC roles assigned automatically"
+        "environmentName": "[parameters('environmentName')]",
+        "resourceToken": "[variables('resourceToken')]",
+        "appServiceName": "[format('{0}app', replace(parameters('environmentName'), '-', ''))]",
+        "appServicePlanName": "[if(not(empty(parameters('appServicePlanName'))), parameters('appServicePlanName'), format('{0}-asplan', parameters('environmentName')))]",
+        "managedIdentityName": "[if(parameters('enableManagedIdentity'), format('{0}-mi', parameters('environmentName')), '')]",
+        "aiProjectName": "[if(not(empty(parameters('aiProjectName'))), parameters('aiProjectName'), format('{0}{1}', variables('abbrs').machineLearningServicesWorkspaces, variables('resourceToken')))]",
+        "aiServicesName": "[if(not(empty(parameters('aiServicesName'))), parameters('aiServicesName'), format('{0}{1}', variables('abbrs').cognitiveServicesAccounts, variables('resourceToken')))]",
+        "storageAccountName": "[if(not(empty(parameters('storageAccountName'))), parameters('storageAccountName'), format('{0}{1}', variables('abbrs').storageStorageAccounts, variables('resourceToken')))]"
+      }
+    },
+    "DEBUG_AI_FOUNDRY_DEPLOYMENT": {
+      "type": "object",
+      "value": {
+        "aiFoundryMode": "[parameters('aSetupChoice')]",
+        "shouldProvisionNewAI": "[variables('shouldProvisionNewAI')]",
+        "shouldUseExistingAI": "[variables('shouldUseExistingAI')]",
+        "existingEndpoint": "[parameters('bFoundryEndpoint')]",
+        "existingResourceId": "[variables('computedAIResourceId')]",
+        "configurationMethod": "environment-variables",
+        "rbacInstructions": "[if(variables('shouldUseExistingAI'), 'Check existingAIRbacInstructions module output', 'Auto-configured for new AI services')]"
       }
     },
     "AZURE_LOCATION": {
@@ -3153,27 +1923,15 @@
     },
     "AZURE_EXISTING_AIPROJECT_RESOURCE_ID": {
       "type": "string",
-      "value": "[parameters('azureExistingAIProjectResourceId')]"
+      "value": "[variables('computedAIResourceId')]"
     },
     "AZURE_AI_CHAT_DEPLOYMENT_NAME": {
       "type": "string",
-      "value": "[if(variables('shouldEnableAI'), parameters('chatDeploymentName'), '')]"
-    },
-    "AZURE_AI_EMBED_DEPLOYMENT_NAME": {
-      "type": "string",
-      "value": "[if(variables('shouldEnableSearch'), parameters('embeddingDeploymentName'), '')]"
-    },
-    "AZURE_AI_SEARCH_INDEX_NAME": {
-      "type": "string",
-      "value": "[if(variables('shouldEnableSearch'), parameters('aiSearchIndexName'), '')]"
+      "value": "[if(variables('shouldEnableAI'), variables('effectiveChatDeploymentName'), '')]"
     },
     "AZURE_AI_SEARCH_ENDPOINT": {
       "type": "string",
       "value": ""
-    },
-    "AZURE_AI_EMBED_DIMENSIONS": {
-      "type": "string",
-      "value": "[if(variables('shouldEnableSearch'), parameters('embeddingDeploymentDimensions'), '')]"
     },
     "AZURE_EXISTING_AIPROJECT_ENDPOINT": {
       "type": "string",
@@ -3187,30 +1945,22 @@
       "type": "bool",
       "value": "[if(variables('shouldEnableAppInsights'), parameters('azureTracingGenAIContentRecordingEnabled'), false())]"
     },
-    "AZURE_KEY_VAULT_NAME": {
-      "type": "string",
-      "value": "[if(parameters('enableKeyVault'), variables('resolvedKeyVaultName'), '')]"
-    },
-    "AZURE_KEY_VAULT_URI": {
-      "type": "string",
-      "value": "[if(parameters('enableKeyVault'), format('https://{0}{1}/', variables('resolvedKeyVaultName'), environment().suffixes.keyvaultDns), '')]"
-    },
     "SERVICE_API_IDENTITY_PRINCIPAL_ID": {
       "type": "string",
-      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'api'), '2022-09-01').outputs.SERVICE_API_IDENTITY_PRINCIPAL_ID.value]"
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'api'), '2025-04-01').outputs.SERVICE_API_IDENTITY_PRINCIPAL_ID.value]"
     },
     "SERVICE_API_NAME": {
       "type": "string",
-      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'api'), '2022-09-01').outputs.SERVICE_API_NAME.value]"
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'api'), '2025-04-01').outputs.SERVICE_API_NAME.value]"
     },
     "SERVICE_API_URI": {
       "type": "string",
-      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'api'), '2022-09-01').outputs.SERVICE_API_URI.value]"
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'api'), '2025-04-01').outputs.SERVICE_API_URI.value]"
     },
     "SERVICE_API_ENDPOINTS": {
       "type": "array",
       "value": [
-        "[format('{0}', reference(resourceId('Microsoft.Resources/deployments', 'api'), '2022-09-01').outputs.SERVICE_API_URI.value)]"
+        "[format('{0}', reference(resourceId('Microsoft.Resources/deployments', 'api'), '2025-04-01').outputs.SERVICE_API_URI.value)]"
       ]
     }
   }

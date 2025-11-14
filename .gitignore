@@ -1,3 +1,7 @@
+# AIPlaygroundCode exclusions - only exclude log files and cache
+AIPlaygroundCode/__pycache__/
+AIPlaygroundCode/*.log
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -157,22 +161,10 @@ debug_*.py
 quick_test_*.py
 simple_test.py
 
-# Upload directories (moved to AIPlaygroundCode)
-AIPlaygroundCode/uploads/
-
-# Configuration files with sensitive data 
-AIPlaygroundCode/settings.local.json
-# Note: settings.json in repo contains template values only
-
-# Template files (explicitly included)
-!AIPlaygroundCode/settings.json.template
-!AIPlaygroundCode/settings.local.json.template
-
-# Test output files and logs (moved to AIPlaygroundCode)
+# Test output files and logs
 azd-live-output.log
 azd-prompts-captured.txt
 tests/reports/
-AIPlaygroundCode/*.log
 cleanup_log.txt
 scripts/cleanup_log.txt
 
@@ -182,5 +174,6 @@ scripts/cleanup_log.txt
 # Temporary files and folders for deletion
 to_be_deleted/
 
-# Development artifacts that shouldn't be published
-AIPlaygroundCode/settings.json
+# Documentation files - DON'T include these in git
+docs/agent_instruction.md
+docs/project_cleanup_instructions.md

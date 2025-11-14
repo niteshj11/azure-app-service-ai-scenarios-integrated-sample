@@ -10,26 +10,20 @@ param enableManagedIdentity bool = false
 param enableAIServices bool = false
 
 // Optional resource parameters
-param identityName string = ''
+// identityName parameter removed - using system-assigned managed identity only
 param azureExistingAIProjectResourceId string = ''
+param aiFoundryEndpoint string = ''
 param chatDeploymentName string = ''
-param embeddingDeploymentName string = ''
-param aiSearchIndexName string = ''
-param embeddingDeploymentDimensions string = ''
-param searchServiceEndpoint string = ''
+param audioDeploymentName string = ''
+// Embedding and search parameters archived - not used without search functionality
 param enableAzureMonitorTracing bool = false
 param azureTracingGenAIContentRecordingEnabled bool = false
 param projectEndpoint string = ''
-param applicationInsightsName string = ''
+// applicationInsightsName parameter archived - not used in simplified config
 
-resource apiIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = if (enableManagedIdentity) {
-  name: identityName
-  location: location
-}
+// User-assigned managed identity removed - using system-assigned identity only
 
-// Key Vault integration parameters (infrastructure resources only)
-param enableKeyVault bool = false
-param keyVaultName string = ''
+// Key Vault integration archived - using environment variables with Managed Identity
 
 // Note: Azure AI credentials are now managed by the application via settings page
 // No longer passed as Bicep parameters - cleaner separation of infrastructure vs user configuration
@@ -73,42 +67,37 @@ var baseEnv = [
 
 // Infrastructure resource identifiers (NOT user credentials)
 var infrastructureEnv = [
-  {
-    name: 'AZURE_KEY_VAULT_NAME'
-    value: keyVaultName
-  }
-  {
-    name: 'ENABLE_KEY_VAULT'
-    value: string(enableKeyVault)
-  }
+  // Key Vault environment variables archived
 ]
 
-// AI-specific environment variables
-var aiEnv = enableAIServices ? [
+// AI-specific environment variables - Always set if AI services enabled OR if we have endpoint/models
+var hasAIConfig = enableAIServices || (!empty(aiFoundryEndpoint) || !empty(chatDeploymentName))
+var aiEnv = hasAIConfig ? [
   {
     name: 'AZURE_EXISTING_AIPROJECT_RESOURCE_ID'
     value: azureExistingAIProjectResourceId
+  }
+  {
+    name: 'EXISTING_AI_FOUNDRY_ENDPOINT'
+    value: aiFoundryEndpoint
+  }
+  {
+    name: 'AZURE_INFERENCE_ENDPOINT'
+    value: aiFoundryEndpoint
+  }
+  {
+    name: 'AZURE_CLIENT_ID'
+    value: 'system-assigned-managed-identity'
   }
   {
     name: 'AZURE_AI_CHAT_DEPLOYMENT_NAME'
     value: chatDeploymentName
   }
   {
-    name: 'AZURE_AI_EMBED_DEPLOYMENT_NAME'
-    value: embeddingDeploymentName
+    name: 'AZURE_AI_AUDIO_DEPLOYMENT_NAME'
+    value: audioDeploymentName
   }
-  {
-    name: 'AZURE_AI_SEARCH_INDEX_NAME'
-    value: aiSearchIndexName
-  }
-  {
-    name: 'AZURE_AI_EMBED_DIMENSIONS'
-    value: embeddingDeploymentDimensions
-  }
-  {
-    name: 'AZURE_AI_SEARCH_ENDPOINT'
-    value: searchServiceEndpoint
-  }
+  // Embedding and search environment variables archived
   {
     name: 'ENABLE_AZURE_MONITOR_TRACING'
     value: string(enableAzureMonitorTracing)
@@ -156,8 +145,13 @@ module app 'core/host/appservice.bicep' = {
 output DEBUG_API object = {
   enableManagedIdentity: enableManagedIdentity
   identityPrincipalIdLength: enableManagedIdentity ? length(app.outputs.identityPrincipalId) : 0
-  enableKeyVault: enableKeyVault
-  keyVaultName: keyVaultName
+  // AI Configuration Debug
+  enableAIServices: enableAIServices
+  hasAIConfig: hasAIConfig
+  aiFoundryEndpoint: aiFoundryEndpoint
+  chatDeploymentName: chatDeploymentName
+  audioDeploymentName: audioDeploymentName
+  // Key Vault outputs archived
 }
 
 output SERVICE_API_IDENTITY_PRINCIPAL_ID string = enableManagedIdentity ? app.outputs.identityPrincipalId : ''

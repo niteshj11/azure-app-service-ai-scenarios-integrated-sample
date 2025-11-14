@@ -50,7 +50,7 @@ resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
     enablePurgeProtection: enablePurgeProtection ? true : null
     publicNetworkAccess: enablePublicNetworkAccess ? 'Enabled' : 'Disabled'
     enableRbacAuthorization: enableRbacAuthorization
-    accessPolicies: enableRbacAuthorization ? [] : concat([
+    accessPolicies: enableRbacAuthorization ? [] : concat(!empty(principalId) ? [
       {
         tenantId: tenant().tenantId
         objectId: principalId
@@ -66,7 +66,7 @@ resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
           certificates: []
         }
       }
-    ], !empty(appServicePrincipalId) ? [
+    ] : [], !empty(appServicePrincipalId) ? [
       {
         tenantId: tenant().tenantId
         objectId: appServicePrincipalId

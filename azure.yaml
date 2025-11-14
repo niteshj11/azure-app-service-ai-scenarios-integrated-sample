@@ -1,8 +1,9 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
 
-name: techmart-ai-chatbot
+name: azure-app-service-ai-scenarios
 metadata:
-  template: techmart-ai-chatbot@0.0.1-beta
+  template: azure-app-service-ai-scenarios@1.0.0
+  description: "Comprehensive Azure App Service AI scenarios with Azure AI Foundry integration"
 
 services:
   api:
@@ -13,3 +14,149 @@ services:
 infra:
   provider: bicep
   path: infra
+  parameters:
+    # 🔄 All parameters collected via preprovision hook for better UX
+    aSetupChoice:
+      type: string
+      description: "🚀 AI Setup: Choose new (create AI services) or existing (use your AI Foundry project)"
+      default: ""
+    
+    # 🔄 Conditional Parameters (collected via preprovision hook)
+    bFoundryEndpoint:
+      type: string
+      description: "📍 AI Foundry Endpoint: Enter your project endpoint URL (e.g., https://myproject.openai.azure.com/)"
+      default: ""
+      
+    cChatModelName:
+      type: string
+      description: "💬 Chat Model: Enter your deployment name (e.g., gpt-4o-mini, gpt-4, gpt-35-turbo)"
+      default: ""
+      
+    dAudioModelName:
+      type: string
+      description: "🎵 Audio Model: Enter your audio deployment name (e.g., gpt-4o-mini-audio-preview)"
+      default: ""
+
+hooks:
+  preprovision:
+    shell: pwsh
+    interactive: true
+    run: |
+      # Set up principal ID for RBAC (required for role assignments)
+      try {
+          $currentUser = az ad signed-in-user show --query id --output tsv
+          if ($currentUser) {
+              azd env set principalId $currentUser
+          }
+      } catch {
+          # Ignore error - can be set manually if needed
+      }
+      
+      # Conditional parameter collection based on setup choice
+      $configPath = ".azure/$env:AZURE_ENV_NAME/config.json"
+      
+      if (Test-Path $configPath) {
+          $config = Get-Content $configPath | ConvertFrom-Json
+          
+          # Ensure infra.parameters exists
+          if (-not $config.infra) {
+              $config | Add-Member -MemberType NoteProperty -Name "infra" -Value ([PSCustomObject]@{}) -Force
+          }
+          if (-not $config.infra.parameters) {
+              $config.infra | Add-Member -MemberType NoteProperty -Name "parameters" -Value ([PSCustomObject]@{}) -Force
+          }
+          
+          # Collect AI Setup Choice if not already set
+          $setupChoice = if ($config.infra.parameters.PSObject.Properties.Name -contains "aSetupChoice") { $config.infra.parameters.aSetupChoice } else { "" }
+          if ([string]::IsNullOrEmpty($setupChoice)) {
+              do {
+                  $setupChoice = Read-Host "🚀 AI Setup: Choose new (create AI services) or existing (use your AI Foundry project)"
+                  $setupChoice = $setupChoice.ToLower().Trim()
+              } while ($setupChoice -ne "new" -and $setupChoice -ne "existing")
+              
+              $config.infra.parameters | Add-Member -MemberType NoteProperty -Name "aSetupChoice" -Value $setupChoice -Force
+              $config | ConvertTo-Json -Depth 10 | Set-Content $configPath
+          }
+          
+          if ($setupChoice -eq "existing") {
+              
+              # Collect existing AI Foundry details
+              $endpoint = if ($config.infra.parameters.PSObject.Properties.Name -contains "bFoundryEndpoint") { $config.infra.parameters.bFoundryEndpoint } else { "" }
+              if ([string]::IsNullOrEmpty($endpoint)) {
+                  do {
+                      $endpoint = Read-Host "📍 AI Foundry Endpoint: Enter your project endpoint URL (e.g., https://myproject.openai.azure.com/)"
+                  } while ([string]::IsNullOrEmpty($endpoint) -or -not $endpoint.StartsWith("https://"))
+                  
+                  $config.infra.parameters | Add-Member -MemberType NoteProperty -Name "bFoundryEndpoint" -Value $endpoint -Force
+              }
+              
+              # Collect model names
+              $chatModel = if ($config.infra.parameters.PSObject.Properties.Name -contains "cChatModelName") { $config.infra.parameters.cChatModelName } else { "" }
+              if ([string]::IsNullOrEmpty($chatModel)) {
+                  do {
+                      $chatModel = Read-Host "💬 Chat Model: Enter your deployment name (e.g., gpt-4o-mini, gpt-4, gpt-35-turbo)"
+                  } while ([string]::IsNullOrEmpty($chatModel))
+                  
+                  $config.infra.parameters | Add-Member -MemberType NoteProperty -Name "cChatModelName" -Value $chatModel -Force
+              }
+              
+              $audioModel = if ($config.infra.parameters.PSObject.Properties.Name -contains "dAudioModelName") { $config.infra.parameters.dAudioModelName } else { "" }
+              if ([string]::IsNullOrEmpty($audioModel)) {
+                  $audioModel = Read-Host "🎵 Audio Model: Enter your audio deployment name (e.g., gpt-4o-mini-audio-preview)"
+                  if ([string]::IsNullOrEmpty($audioModel)) {
+                      $audioModel = "gpt-4o-mini-audio-preview"
+                  }
+                  
+                  $config.infra.parameters | Add-Member -MemberType NoteProperty -Name "dAudioModelName" -Value $audioModel -Force
+              }
+              
+              # Save updated config
+              $config | ConvertTo-Json -Depth 10 | Set-Content $configPath
+              
+              # CRITICAL: Also set as azd environment variables so they flow to Bicep
+              azd env set aSetupChoice $setupChoice
+              azd env set bFoundryEndpoint $endpoint
+              azd env set cChatModelName $chatModel
+              azd env set dAudioModelName $audioModel
+              
+          } else {
+              # Set default values for new deployment
+              $chatModel = if ($config.infra.parameters.PSObject.Properties.Name -contains "cChatModelName") { $config.infra.parameters.cChatModelName } else { "" }
+              if ([string]::IsNullOrEmpty($chatModel)) {
+                  $chatModel = "gpt-4o-mini"
+                  $config.infra.parameters | Add-Member -MemberType NoteProperty -Name "cChatModelName" -Value $chatModel -Force
+              }
+              $audioModel = if ($config.infra.parameters.PSObject.Properties.Name -contains "dAudioModelName") { $config.infra.parameters.dAudioModelName } else { "" }
+              if ([string]::IsNullOrEmpty($audioModel)) {
+                  $audioModel = "gpt-4o-mini-audio-preview"
+                  $config.infra.parameters | Add-Member -MemberType NoteProperty -Name "dAudioModelName" -Value $audioModel -Force
+              }
+              
+              # Save updated configuration
+              $config | ConvertTo-Json -Depth 10 | Set-Content $configPath
+              
+              # CRITICAL: Also set as azd environment variables so they flow to Bicep
+              azd env set aSetupChoice $setupChoice
+              azd env set cChatModelName $chatModel
+              azd env set dAudioModelName $audioModel
+          }
+      }
+      
+  postdeploy:
+    shell: pwsh
+    run: |
+      Write-Host "==============================" -ForegroundColor Cyan
+      Write-Host "🚀 Deployment completed successfully!" -ForegroundColor Green
+      
+      $setupChoice = azd env get-value aSetupChoice
+      if ($setupChoice -eq "existing") {
+        Write-Host "✅ Using existing Azure AI Foundry endpoint" -ForegroundColor Yellow
+        Write-Host "✅ RBAC permissions configured automatically via Bicep deployment script" -ForegroundColor Green
+      } else {
+        Write-Host "✅ New Azure AI services provisioned" -ForegroundColor Green
+      }
+      
+      $serviceUri = azd env get-value SERVICE_API_URI
+      Write-Host ""
+      Write-Host "🌐 Application URL: $serviceUri" -ForegroundColor Cyan
+      Write-Host "🔧 Visit the settings page to configure additional options" -ForegroundColor Gray

@@ -12,6 +12,8 @@ param aiServicesName string
 param aiServiceModelDeployments array = []
 @description('The Application Insights connection name.')
 param appInsightConnectionName string
+@description('Enable multi-service AI capabilities for vision and audio')
+param enableMultiServiceAI bool = true
 param tags object = {}
 
 module storageAccount '../storage/storage-account.bicep' = {
@@ -58,6 +60,7 @@ module aiServices '../ai/cognitiveservices.bicep' = {
     appInsightConnectionName: appInsightConnectionName
     storageAccountId: storageAccount.outputs.id
     storageAccountConnectionName: 'storage-connection'
+    enableMultiService: enableMultiServiceAI
   }
 }
 

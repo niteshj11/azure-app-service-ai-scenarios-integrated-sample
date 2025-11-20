@@ -97,6 +97,15 @@ var aiEnv = hasAIConfig ? [
     name: 'AZURE_AI_AUDIO_DEPLOYMENT_NAME'
     value: audioDeploymentName
   }
+  // Multi-modal capabilities environment variables
+  {
+    name: 'AZURE_AI_VISION_ENABLED'
+    value: 'true'
+  }
+  {
+    name: 'AZURE_AI_MULTIMODAL_ENABLED'
+    value: 'true'
+  }
   // Embedding and search environment variables archived
   {
     name: 'ENABLE_AZURE_MONITOR_TRACING'
@@ -151,6 +160,11 @@ output DEBUG_API object = {
   aiFoundryEndpoint: aiFoundryEndpoint
   chatDeploymentName: chatDeploymentName
   audioDeploymentName: audioDeploymentName
+  receivedParameters: {
+    aiFoundryEndpoint: aiFoundryEndpoint
+    chatDeploymentName: chatDeploymentName
+    audioDeploymentName: audioDeploymentName
+  }
   // Key Vault outputs archived
 }
 

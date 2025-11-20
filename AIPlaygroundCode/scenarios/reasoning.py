@@ -10,6 +10,14 @@ from ..utils.azure_client import get_azure_client
 from ..utils.helpers import get_conversation_history
 from ..config import get_model_config
 
+# Check for OpenAI SDK availability
+try:
+    from openai import AzureOpenAI
+    OPENAI_SDK_AVAILABLE = True
+except ImportError:
+    OPENAI_SDK_AVAILABLE = False
+    AzureOpenAI = None
+
 
 def handle_reasoning_message(user_message: str) -> str:
     """
@@ -26,13 +34,23 @@ def handle_reasoning_message(user_message: str) -> str:
     
     messages = build_reasoning_messages(user_message)
     
-    # Use reasoning-optimized parameters
-    response = client.complete(
-        messages=messages,
-        model=config.model,
-        max_tokens=min(4000, config.max_tokens * 2),
-        temperature=0.1,  # Lower for focused reasoning
-    )
+    # Handle both OpenAI SDK and azure.ai.inference
+    if OPENAI_SDK_AVAILABLE and isinstance(client, AzureOpenAI):
+        # Use OpenAI SDK interface
+        response = client.chat.completions.create(
+            messages=messages,
+            model=config.model,
+            max_tokens=min(4000, config.max_tokens * 2),
+            temperature=0.1,  # Lower for focused reasoning
+        )
+    else:
+        # Use azure.ai.inference interface
+        response = client.complete(
+            messages=messages,
+            model=config.model,
+            max_tokens=min(4000, config.max_tokens * 2),
+            temperature=0.1,  # Lower for focused reasoning
+        )
     
     return format_reasoning_response(response, config)
 

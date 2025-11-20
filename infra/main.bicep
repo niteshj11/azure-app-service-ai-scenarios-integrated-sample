@@ -15,10 +15,9 @@ param location string = resourceGroup().location
 @description('Id of the user or app to assign application roles')
 param principalId string = ''
 
-// User Configuration Options - All collected via preprovision hook for better UX
-// No direct prompting - all parameters have defaults and are populated by hook
+// User Configuration Options - Parameters populated by azd from environment variables
+// These are set by the preprovision hook in azure.yaml and passed via main.parameters.json
 @description('Choose: new (create AI services) or existing (use your AI Foundry project)')
-@allowed(['new', 'existing', ''])
 param aSetupChoice string = ''
 
 @description('Your existing AI Foundry project endpoint URL (collected conditionally)')
@@ -30,12 +29,20 @@ param cChatModelName string = ''
 @description('Your audio model deployment name (collected conditionally)')
 param dAudioModelName string = ''
 
-// Optional Configuration - Strategic defaults (will not prompt unless overridden)
+@description('AI Foundry subscription ID (automatically detected from endpoint)')
+param eAISubscriptionId string = ''
+
+@description('AI Foundry resource group name (automatically detected from endpoint)')
+param fAIResourceGroup string = ''
+
+// Optional Configuration - Strategic defaults (will not prompt unless overridden)  
 @description('Subscription ID where your existing AI Foundry project is located')
-param existingAISubscriptionId string = subscription().subscriptionId
+param existingAISubscriptionId string = !empty(eAISubscriptionId) ? eAISubscriptionId : subscription().subscriptionId
 
 @description('Resource Group name where your existing AI Foundry project is located')
-param existingAIResourceGroupName string = resourceGroup().name
+param existingAIResourceGroupName string = !empty(fAIResourceGroup) ? fAIResourceGroup : resourceGroup().name
+
+
 
 @description('Enable Managed Identity for the App Service (required for Azure AI integration)')
 param enableManagedIdentity bool = true
@@ -52,13 +59,14 @@ var shouldProvisionNewAI = aSetupChoice == 'new'
 var shouldUseExistingAI = aSetupChoice == 'existing' && !empty(bFoundryEndpoint)
 
 // Extract AI account name from endpoint URL and construct resource ID (only for existing AI)
-// Handles both cognitiveservices.azure.com and services.ai.azure.com domains
-var aiAccountName = shouldUseExistingAI ? split(split(bFoundryEndpoint, '://')[1], '.')[0] : ''
+// User provides complete endpoint with /models, so we extract the base URL for account name
+var baseEndpointForName = shouldUseExistingAI ? replace(bFoundryEndpoint, '/models', '') : ''
+var aiAccountName = shouldUseExistingAI ? split(split(baseEndpointForName, '://')[1], '.')[0] : ''
 var computedAIResourceId = shouldUseExistingAI ? '/subscriptions/${existingAISubscriptionId}/resourceGroups/${existingAIResourceGroupName}/providers/Microsoft.CognitiveServices/accounts/${aiAccountName}' : ''
 
-// Model deployment names with intelligent defaults
-var effectiveChatModelName = !empty(cChatModelName) ? cChatModelName : (shouldProvisionNewAI ? chatModelName : 'gpt-4o-mini')
-var effectiveAudioModelName = !empty(dAudioModelName) ? dAudioModelName : 'gpt-4o-mini-audio-preview'
+// Model deployment names (no fallbacks - require explicit parameters)
+var effectiveChatModelName = shouldProvisionNewAI ? chatModelName : cChatModelName
+var effectiveAudioModelName = shouldProvisionNewAI ? chatModelName : dAudioModelName
 
 
 // Resource names (optional - will be generated if not provided)
@@ -83,14 +91,16 @@ param externalAzureAIEndpoint string = ''
 @allowed(['Microsoft', 'OpenAI'])
 param chatModelFormat string = 'OpenAI'
 
-@description('Name of the chat model to deploy')
+@description('Name of the chat model to deploy (use gpt-4o-mini for vision support)')
 param chatModelName string = 'gpt-4o-mini'
-// Note: Audio model deployment can be configured through the application settings page after deployment
 
 @description('Version of the chat model to deploy')
 // See version availability in this table:
 // https://learn.microsoft.com/azure/ai-services/openai/concepts/models#global-standard-model-availability
 param chatModelVersion string = '2024-07-18'
+
+@description('Enable multi-service AI capabilities (required for vision and audio)')
+param enableMultiServiceAI bool = true
 
 @description('Sku of the chat deployment')
 param chatDeploymentSku string = 'GlobalStandard'
@@ -167,6 +177,7 @@ module ai 'core/host/ai-environment.bicep' = if (shouldProvisionNewAI) {
     storageAccountName: !empty(storageAccountName) ? storageAccountName : '${replace(environmentName, '-', '')}st'
     aiServiceModelDeployments: aiDeployments
     appInsightConnectionName: 'appinsight-connection'
+    enableMultiServiceAI: enableMultiServiceAI
   }
 }
 
@@ -251,9 +262,10 @@ module apiRoleAzureAIDeveloper 'core/security/role.bicep' = if (shouldProvisionN
   }
 }
 
-// RBAC setup instructions for existing AI Foundry (manual step required)
+// RBAC setup for existing AI Foundry (automated via deployment script)
 module existingAIRbacInstructions 'core/ai/existing-ai-rbac.bicep' = if (shouldUseExistingAI && enableManagedIdentity) {
   name: 'existing-ai-rbac-instructions'
+  scope: resourceGroup(existingAISubscriptionId, existingAIResourceGroupName)
   params: {
     aiFoundryResourceId: computedAIResourceId
     appServicePrincipalId: api.outputs.SERVICE_API_IDENTITY_PRINCIPAL_ID
@@ -291,7 +303,7 @@ output DEBUG_AI_FOUNDRY_DEPLOYMENT object = {
   shouldUseExistingAI: shouldUseExistingAI
   existingEndpoint: bFoundryEndpoint
   existingResourceId: computedAIResourceId
-  configurationMethod: 'environment-variables'
+  configurationMethod: 'direct-environment-variables'
   rbacInstructions: shouldUseExistingAI ? 'Check existingAIRbacInstructions module output' : 'Auto-configured for new AI services'
 }
 
@@ -305,7 +317,10 @@ output AZURE_EXISTING_AIPROJECT_RESOURCE_ID string = computedAIResourceId
 output AZURE_AI_CHAT_DEPLOYMENT_NAME string = shouldEnableAI ? effectiveChatDeploymentName : ''
 // Search-related outputs archived - search functionality removed
 output AZURE_AI_SEARCH_ENDPOINT string = ''
-output AZURE_EXISTING_AIPROJECT_ENDPOINT string = ''
+output AZURE_EXISTING_AIPROJECT_ENDPOINT string = shouldUseExistingAI ? bFoundryEndpoint : ''
+output AZURE_INFERENCE_ENDPOINT string = shouldUseExistingAI ? bFoundryEndpoint : ''
+output EXISTING_AI_FOUNDRY_ENDPOINT string = shouldUseExistingAI ? bFoundryEndpoint : ''
+output AZURE_AI_AUDIO_DEPLOYMENT_NAME string = shouldEnableAI ? effectiveAudioModelName : ''
 output ENABLE_AZURE_MONITOR_TRACING bool = shouldEnableAppInsights ? enableAzureMonitorTracing : false
 output AZURE_TRACING_GEN_AI_CONTENT_RECORDING_ENABLED bool = shouldEnableAppInsights ? azureTracingGenAIContentRecordingEnabled : false
 

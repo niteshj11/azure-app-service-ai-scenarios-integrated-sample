@@ -67,18 +67,8 @@ def check_configuration():
         if session_size > 3000:  # Conservative limit
             logger.warning(f"Large session detected ({session_size} bytes), cleaning up")
             
-            # Keep only essential data and clear conversation if needed
-            if 'conversation_compressed' in session:
-                # Force aggressive cleanup of conversation
-                from AIPlaygroundCode.utils.helpers import get_conversation_history, _compress_conversation
-                conversation = get_conversation_history()
-                if conversation:
-                    # Keep only last 4 messages (2 exchanges)
-                    session['conversation_compressed'] = _compress_conversation(conversation[-4:])
-                else:
-                    session.pop('conversation_compressed', None)
-                
-            # Remove legacy conversation data
+            # Simple session cleanup to avoid recursion - just clear conversation data
+            session.pop('conversation_compressed', None)
             session.pop('conversation', None)
             session.modified = True
             
@@ -298,7 +288,8 @@ def update_settings():
         form_data['api_key'] = request.form.get('api_key', '').strip()
         
         # Model settings
-        form_data['model'] = request.form.get('model', 'gpt-4.1')
+        form_data['model'] = request.form.get('model', 'gpt-4o-mini')
+        form_data['audio_model'] = request.form.get('audio_model', '')
         form_data['max_tokens'] = request.form.get('max_tokens', 1000)
         form_data['temperature'] = request.form.get('temperature', 0.7)
         form_data['system_message'] = request.form.get('system_message', '')

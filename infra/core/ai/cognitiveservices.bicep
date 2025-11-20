@@ -19,6 +19,9 @@ param sku object = {
   name: 'S0'
 }
 
+@description('Enable multi-service capabilities for vision and audio')
+param enableMultiService bool = true
+
 param allowedIpRules array = []
 param networkAcls object = empty(allowedIpRules) ? {
   defaultAction: 'Allow'
@@ -31,7 +34,7 @@ resource account 'Microsoft.CognitiveServices/accounts@2023-10-01-preview' = {
   name: aiServiceName
   location: location
   sku: sku
-  kind: 'AIServices'
+  kind: enableMultiService ? 'AIServices' : 'OpenAI'
   identity: {
     type: 'SystemAssigned'
   }
@@ -40,7 +43,10 @@ resource account 'Microsoft.CognitiveServices/accounts@2023-10-01-preview' = {
     customSubDomainName: customSubDomainName
     networkAcls: networkAcls
     publicNetworkAccess: publicNetworkAccess
-    disableLocalAuth: disableLocalAuth 
+    disableLocalAuth: disableLocalAuth
+    // Enable multi-service capabilities for vision and audio
+    restore: false
+    restrictOutboundNetworkAccess: false
   }
 }
 

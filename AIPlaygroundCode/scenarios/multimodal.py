@@ -15,6 +15,14 @@ from ..config import get_model_config, app_config
 
 logger = logging.getLogger(__name__)
 
+# Check for OpenAI SDK availability
+try:
+    from openai import AzureOpenAI
+    OPENAI_SDK_AVAILABLE = True
+except ImportError:
+    OPENAI_SDK_AVAILABLE = False
+    AzureOpenAI = None
+
 # Supported file types
 IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 AUDIO_EXTENSIONS = {'mp3', 'wav', 'ogg', 'm4a', 'flac'}
@@ -89,11 +97,19 @@ def process_image_message(user_message: str, image_path: str) -> str:
         # Build multimodal messages
         messages = build_image_messages(user_message, image_data)
         
-        # Call Azure AI with vision capabilities
-        response = client.complete(
-            messages=messages,
-            **config.get_model_params()
-        )
+        # Handle both OpenAI SDK and azure.ai.inference
+        if OPENAI_SDK_AVAILABLE and isinstance(client, AzureOpenAI):
+            # Use OpenAI SDK interface
+            response = client.chat.completions.create(
+                messages=messages,
+                **config.get_model_params()
+            )
+        else:
+            # Use azure.ai.inference interface
+            response = client.complete(
+                messages=messages,
+                **config.get_model_params()
+            )
         
         return response.choices[0].message.content
         
@@ -500,12 +516,21 @@ def call_audio_model(audio_file_path: str, user_message: str) -> str:
             ])
         ]
         
-        # Call the model using the official approach
-        response = client.complete(
-            messages=messages,
-            temperature=0.3,
-            max_tokens=2000
-        )
+        # Handle both OpenAI SDK and azure.ai.inference
+        if OPENAI_SDK_AVAILABLE and isinstance(client, AzureOpenAI):
+            # Use OpenAI SDK interface
+            response = client.chat.completions.create(
+                messages=messages,
+                temperature=0.3,
+                max_tokens=2000
+            )
+        else:
+            # Use azure.ai.inference interface
+            response = client.complete(
+                messages=messages,
+                temperature=0.3,
+                max_tokens=2000
+            )
         
         return response
         

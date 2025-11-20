@@ -1,4 +1,4 @@
-metadata description = 'Creates RBAC role assignment for App Service Managed Identity to access existing AI Foundry resources using deployment script.'
+metadata description = 'Creates RBAC assignment for App Service Managed Identity to access existing AI Foundry resources.'
 
 @description('Resource ID of the existing Azure AI Foundry service')
 param aiFoundryResourceId string
@@ -9,44 +9,31 @@ param appServicePrincipalId string
 // Cognitive Services OpenAI User role definition ID
 var cognitiveServicesOpenAIUserRoleId = '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd'
 
-// Use deployment script to create cross-resource-group role assignment
-resource rbacDeploymentScript 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
-  name: 'rbac-assignment-script'
-  location: resourceGroup().location
-  kind: 'AzureCLI'
+// Generate a unique name for reference
+var roleAssignmentName = guid(aiFoundryResourceId, appServicePrincipalId, cognitiveServicesOpenAIUserRoleId)
+
+// Parse the AI service name from the resource ID
+var aiServiceName = split(aiFoundryResourceId, '/')[8]
+
+// Reference the existing AI service (we're deploying in the correct scope now)
+resource existingAIService 'Microsoft.CognitiveServices/accounts@2023-05-01' existing = {
+  name: aiServiceName
+}
+
+// Create the actual RBAC assignment
+resource rbacAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: roleAssignmentName
+  scope: existingAIService
   properties: {
-    azCliVersion: '2.52.0'
-    timeout: 'PT10M'
-    retentionInterval: 'P1D'
-    environmentVariables: [
-      {
-        name: 'PRINCIPAL_ID'
-        value: appServicePrincipalId
-      }
-      {
-        name: 'SCOPE'
-        value: aiFoundryResourceId
-      }
-      {
-        name: 'ROLE_ID'
-        value: cognitiveServicesOpenAIUserRoleId
-      }
-    ]
-    scriptContent: '''
-      echo "Creating role assignment..."
-      echo "Principal ID: $PRINCIPAL_ID"
-      echo "Scope: $SCOPE"
-      echo "Role ID: $ROLE_ID"
-      
-      # Create role assignment
-      az role assignment create --role $ROLE_ID --assignee $PRINCIPAL_ID --scope $SCOPE
-      
-      echo "Role assignment created successfully"
-    '''
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', cognitiveServicesOpenAIUserRoleId)
+    principalId: appServicePrincipalId
+    principalType: 'ServicePrincipal'
   }
 }
 
 output aiFoundryResourceId string = aiFoundryResourceId
 output appServicePrincipalId string = appServicePrincipalId
-output roleAssignmentStatus string = 'RBAC assignment created via deployment script'
-output deploymentScriptResult string = rbacDeploymentScript.properties.outputs.result
+output roleAssignmentName string = roleAssignmentName
+output roleDefinitionId string = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', cognitiveServicesOpenAIUserRoleId)
+output rbacInstructions string = 'RBAC assignment created automatically via Bicep deployment'
+output rbacAssignmentId string = rbacAssignment.id

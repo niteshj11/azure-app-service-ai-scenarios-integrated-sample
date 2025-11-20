@@ -35,7 +35,7 @@ This sample application demonstrates how to implement various AI scenarios on Az
    During `azd up`, you'll be prompted to configure AI setup:
    
    **AI Setup Choice**: Choose between:
-   - **`new`**: Creates new Azure AI services automatically (recommended for testing)
+   - **`new`**: Creates new Azure AI services automatically with multi-modal support (recommended for testing)
    - **`existing`**: Use your existing Azure AI Foundry project
    
    **If you choose `existing`, you'll be prompted for**:
@@ -374,6 +374,7 @@ BY ACCESSING OR USING THE SOFTWARE, YOU ACKNOWLEDGE THAT THE SOFTWARE IS NOT DES
 - **[Project Structure](docs/PROJECT_STRUCTURE.md)** - Learn the high-level constructs and architecture
 - **[Configuration Guide](docs/CONFIGURATION_GUIDE.md)** - Understand configuration options and environment setup
 - **[Testing Guide](docs/TESTING_GUIDE.md)** - Learn how to test the application locally and on Azure
+- **[Multi-Modal Deployment Guide](docs/MULTIMODAL_DEPLOYMENT_GUIDE.md)** - Automated deployment of vision and audio capabilities
 
 ### **Azure AI Foundry Documentation**
 - **[Chat Completions](https://learn.microsoft.com/en-us/azure/ai-foundry/foundry-models/how-to/use-chat-completions?tabs=python)** - Basic conversational AI implementation

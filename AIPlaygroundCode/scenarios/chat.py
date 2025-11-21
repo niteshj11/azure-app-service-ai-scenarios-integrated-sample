@@ -77,17 +77,3 @@ def build_chat_messages(user_message: str) -> List[Dict[str, str]]:
     })
     
     return messages
-
-
-def get_chat_example() -> Dict[str, str]:
-    """
-    Get example chat interaction for documentation.
-    
-    Returns:
-        Dictionary with example user input and expected response pattern
-    """
-    return {
-        "user_input": "What services does TechMart offer?",
-        "response_pattern": "Professional response about TechMart's services",
-        "description": "Basic conversational AI for customer service and general inquiries"
-    }

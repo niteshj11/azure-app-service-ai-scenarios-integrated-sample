@@ -12,7 +12,10 @@ from datetime import datetime
 from io import BytesIO
 from html_report_generator import HTMLReportGenerator
 from bs4 import BeautifulSoup
-from test_config import BASE_URL, AZURE_URL, TESTING_LOCAL, TESTING_AZURE
+
+# Add project root to path for imports
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+from to_be_deleted.test_config import BASE_URL, AZURE_URL, TESTING_LOCAL, TESTING_AZURE
 
 def create_test_image_data():
     """Create a small test image for upload testing"""

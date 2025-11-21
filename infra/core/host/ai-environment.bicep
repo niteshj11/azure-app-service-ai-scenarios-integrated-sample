@@ -2,8 +2,6 @@
 @description('Primary location for all resources')
 param location string
 
-@description('The AI Project resource name.')
-param aiProjectName string
 @description('The Storage Account resource name.')
 param storageAccountName string
 @description('The AI Services resource name.')
@@ -53,17 +51,17 @@ module aiServices '../ai/cognitiveservices.bicep' = {
     location: location
     tags: tags
     aiServiceName: aiServicesName
-    aiProjectName: aiProjectName
     deployments: aiServiceModelDeployments
     appInsightsId: ''
     appInsightConnectionString: ''
     appInsightConnectionName: appInsightConnectionName
-    storageAccountId: storageAccount.outputs.id
-    storageAccountConnectionName: 'storage-connection'
     enableMultiService: enableMultiServiceAI
   }
 }
 
-output projectId string = aiServices.outputs.projectId
-output projectEndpoint string = aiServices.outputs.projectEndpoint
+output id string = aiServices.outputs.id
+output endpoint string = aiServices.outputs.endpoint
+// AI Project outputs temporarily disabled
+// output projectId string = aiServices.outputs.projectId
+// output projectEndpoint string = aiServices.outputs.projectEndpoint
 output storageAccountId string = storageAccount.outputs.id

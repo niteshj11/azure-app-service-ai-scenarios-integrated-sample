@@ -15,13 +15,8 @@ azure-core>=1.30.0
 azure-identity>=1.15.0
 openai>=1.35.13
 
-# Azure Key Vault SDK removed - Key Vault functionality archived
-
 # Environment configuration
-python-dotenv==1.0.0
-
-# HTTP requests
-requests==2.31.0
+python-dotenv>=1.0.1
 
 # Production server (optional - for deployment)
 gunicorn==21.2.0

@@ -88,13 +88,11 @@ var pythonAppSettings = runtimeName == 'python' && appCommandLine == '' ? {
 } : {}
 
 // Updates to the single Microsoft.sites/web/config resources that need to be performed sequentially
-// sites/web/config 'appsettings'
-module configAppSettings 'appservice-appsettings.bicep' = {
-  name: '${name}-appSettings'
-  params: {
-    name: appService.name
-    appSettings: union(baseAppSettings, pythonAppSettings)
-  }
+// sites/web/config 'appsettings' - inlined for simplicity
+resource configAppSettings 'Microsoft.Web/sites/config@2022-09-01' = {
+  name: 'appsettings'
+  parent: appService
+  properties: union(baseAppSettings, pythonAppSettings)
 }
 
 // sites/web/config 'logs'

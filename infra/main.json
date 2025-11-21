@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.38.33.27573",
-      "templateHash": "5876710862463163809"
+      "templateHash": "8853012320782812959"
     }
   },
   "parameters": {
@@ -29,6 +29,13 @@
       },
       "minLength": 1
     },
+    "aiLocation": {
+      "type": "string",
+      "defaultValue": "swedencentral",
+      "metadata": {
+        "description": "Location for AI services (must support required models like gpt-4o-mini)"
+      }
+    },
     "principalId": {
       "type": "string",
       "defaultValue": "",
@@ -39,11 +46,6 @@
     "aSetupChoice": {
       "type": "string",
       "defaultValue": "",
-      "allowedValues": [
-        "new",
-        "existing",
-        ""
-      ],
       "metadata": {
         "description": "Choose: new (create AI services) or existing (use your AI Foundry project)"
       }
@@ -69,16 +71,30 @@
         "description": "Your audio model deployment name (collected conditionally)"
       }
     },
+    "eAISubscriptionId": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "AI Foundry subscription ID (automatically detected from endpoint)"
+      }
+    },
+    "fAIResourceGroup": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "AI Foundry resource group name (automatically detected from endpoint)"
+      }
+    },
     "existingAISubscriptionId": {
       "type": "string",
-      "defaultValue": "[subscription().subscriptionId]",
+      "defaultValue": "[if(not(empty(parameters('eAISubscriptionId'))), parameters('eAISubscriptionId'), subscription().subscriptionId)]",
       "metadata": {
         "description": "Subscription ID where your existing AI Foundry project is located"
       }
     },
     "existingAIResourceGroupName": {
       "type": "string",
-      "defaultValue": "[resourceGroup().name]",
+      "defaultValue": "[if(not(empty(parameters('fAIResourceGroup'))), parameters('fAIResourceGroup'), resourceGroup().name)]",
       "metadata": {
         "description": "Resource Group name where your existing AI Foundry project is located"
       }
@@ -88,20 +104,6 @@
       "defaultValue": true,
       "metadata": {
         "description": "Enable Managed Identity for the App Service (required for Azure AI integration)"
-      }
-    },
-    "enableApplicationInsights": {
-      "type": "bool",
-      "defaultValue": false,
-      "metadata": {
-        "description": "Enable Application Insights monitoring"
-      }
-    },
-    "aiProjectName": {
-      "type": "string",
-      "defaultValue": "",
-      "metadata": {
-        "description": "The Azure AI Foundry Hub resource name. If omitted will be generated"
       }
     },
     "aiServicesName": {
@@ -145,9 +147,9 @@
     },
     "chatModelName": {
       "type": "string",
-      "defaultValue": "gpt-4o-mini",
+      "defaultValue": "gpt-4o",
       "metadata": {
-        "description": "Name of the chat model to deploy"
+        "description": "Name of the chat model to deploy (use gpt-4o for vision support)"
       }
     },
     "chatModelVersion": {
@@ -166,23 +168,55 @@
     },
     "chatDeploymentCapacity": {
       "type": "int",
-      "defaultValue": 30,
+      "defaultValue": 100,
       "metadata": {
         "description": "Capacity of the chat deployment"
       }
     },
-    "enableAzureMonitorTracing": {
-      "type": "bool",
-      "defaultValue": false,
+    "audioModelFormat": {
+      "type": "string",
+      "defaultValue": "OpenAI",
+      "allowedValues": [
+        "Microsoft",
+        "OpenAI"
+      ],
       "metadata": {
-        "description": "Do we want to use the Azure Monitor tracing"
+        "description": "Format of the audio model to deploy"
       }
     },
-    "azureTracingGenAIContentRecordingEnabled": {
-      "type": "bool",
-      "defaultValue": false,
+    "audioModelName": {
+      "type": "string",
+      "defaultValue": "gpt-4o-mini-audio-preview",
       "metadata": {
-        "description": "Do we want to use the Azure Monitor tracing for GenAI content recording"
+        "description": "Name of the audio model to deploy"
+      }
+    },
+    "audioModelVersion": {
+      "type": "string",
+      "defaultValue": "2024-12-17",
+      "metadata": {
+        "description": "Version of the audio model to deploy"
+      }
+    },
+    "audioDeploymentSku": {
+      "type": "string",
+      "defaultValue": "GlobalStandard",
+      "metadata": {
+        "description": "Sku of the audio deployment"
+      }
+    },
+    "audioDeploymentCapacity": {
+      "type": "int",
+      "defaultValue": 30,
+      "metadata": {
+        "description": "Capacity of the audio deployment"
+      }
+    },
+    "enableMultiServiceAI": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Enable multi-service AI capabilities (required for vision and audio)"
       }
     },
     "templateValidationMode": {
@@ -340,12 +374,12 @@
     },
     "shouldProvisionNewAI": "[equals(parameters('aSetupChoice'), 'new')]",
     "shouldUseExistingAI": "[and(equals(parameters('aSetupChoice'), 'existing'), not(empty(parameters('bFoundryEndpoint'))))]",
-    "aiAccountName": "[if(variables('shouldUseExistingAI'), split(split(parameters('bFoundryEndpoint'), '://')[1], '.')[0], '')]",
+    "baseEndpointForName": "[if(variables('shouldUseExistingAI'), replace(parameters('bFoundryEndpoint'), '/models', ''), '')]",
+    "aiAccountName": "[if(variables('shouldUseExistingAI'), split(split(variables('baseEndpointForName'), '://')[1], '.')[0], '')]",
     "computedAIResourceId": "[if(variables('shouldUseExistingAI'), format('/subscriptions/{0}/resourceGroups/{1}/providers/Microsoft.CognitiveServices/accounts/{2}', parameters('existingAISubscriptionId'), parameters('existingAIResourceGroupName'), variables('aiAccountName')), '')]",
-    "effectiveChatModelName": "[if(not(empty(parameters('cChatModelName'))), parameters('cChatModelName'), if(variables('shouldProvisionNewAI'), parameters('chatModelName'), 'gpt-4o-mini'))]",
-    "effectiveAudioModelName": "[if(not(empty(parameters('dAudioModelName'))), parameters('dAudioModelName'), 'gpt-4o-mini-audio-preview')]",
+    "effectiveChatModelName": "[if(variables('shouldProvisionNewAI'), parameters('chatModelName'), parameters('cChatModelName'))]",
+    "effectiveAudioModelName": "[if(variables('shouldProvisionNewAI'), parameters('audioModelName'), parameters('dAudioModelName'))]",
     "shouldEnableAI": "[or(variables('shouldProvisionNewAI'), variables('shouldUseExistingAI'))]",
-    "shouldEnableAppInsights": "[parameters('enableApplicationInsights')]",
     "runnerPrincipalType": "[if(parameters('templateValidationMode'), 'ServicePrincipal', 'User')]",
     "abbrs": "[variables('$fxv#0')]",
     "resourceToken": "[if(parameters('templateValidationMode'), toLower(uniqueString(resourceGroup().id, parameters('environmentName'), parameters('location'), parameters('seed'))), toLower(uniqueString(resourceGroup().id, parameters('environmentName'), parameters('location'))))]",
@@ -367,7 +401,27 @@
         }
       }
     ],
-    "aiDeployments": "[variables('aiChatModel')]"
+    "aiAudioModel": [
+      {
+        "name": "[variables('effectiveAudioModelName')]",
+        "model": {
+          "format": "[parameters('audioModelFormat')]",
+          "name": "[parameters('audioModelName')]",
+          "version": "[parameters('audioModelVersion')]"
+        },
+        "sku": {
+          "name": "[parameters('audioDeploymentSku')]",
+          "capacity": "[parameters('audioDeploymentCapacity')]"
+        }
+      }
+    ],
+    "dualModelSupportedRegions": [
+      "eastus",
+      "eastus2",
+      "swedencentral"
+    ],
+    "isDualModelSupported": "[contains(variables('dualModelSupportedRegions'), parameters('aiLocation'))]",
+    "aiDeployments": "[if(variables('isDualModelSupported'), union(variables('aiChatModel'), variables('aiAudioModel')), variables('aiChatModel'))]"
   },
   "resources": [
     {
@@ -382,12 +436,11 @@
         "mode": "Incremental",
         "parameters": {
           "location": {
-            "value": "[parameters('location')]"
+            "value": "[parameters('aiLocation')]"
           },
           "tags": {
             "value": "[variables('tags')]"
           },
-          "aiProjectName": "[if(not(empty(parameters('aiProjectName'))), createObject('value', parameters('aiProjectName')), createObject('value', format('{0}-aiproject', parameters('environmentName'))))]",
           "aiServicesName": "[if(not(empty(parameters('aiServicesName'))), createObject('value', parameters('aiServicesName')), createObject('value', format('{0}-ai', parameters('environmentName'))))]",
           "storageAccountName": "[if(not(empty(parameters('storageAccountName'))), createObject('value', parameters('storageAccountName')), createObject('value', format('{0}st', replace(parameters('environmentName'), '-', ''))))]",
           "aiServiceModelDeployments": {
@@ -395,6 +448,9 @@
           },
           "appInsightConnectionName": {
             "value": "appinsight-connection"
+          },
+          "enableMultiServiceAI": {
+            "value": "[parameters('enableMultiServiceAI')]"
           }
         },
         "template": {
@@ -404,7 +460,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.38.33.27573",
-              "templateHash": "17005866665169169570"
+              "templateHash": "7744699371515326455"
             }
           },
           "parameters": {
@@ -413,12 +469,6 @@
               "minLength": 1,
               "metadata": {
                 "description": "Primary location for all resources"
-              }
-            },
-            "aiProjectName": {
-              "type": "string",
-              "metadata": {
-                "description": "The AI Project resource name."
               }
             },
             "storageAccountName": {
@@ -444,6 +494,13 @@
               "type": "string",
               "metadata": {
                 "description": "The Application Insights connection name."
+              }
+            },
+            "enableMultiServiceAI": {
+              "type": "bool",
+              "defaultValue": true,
+              "metadata": {
+                "description": "Enable multi-service AI capabilities for vision and audio"
               }
             },
             "tags": {
@@ -755,9 +812,6 @@
                   "aiServiceName": {
                     "value": "[parameters('aiServicesName')]"
                   },
-                  "aiProjectName": {
-                    "value": "[parameters('aiProjectName')]"
-                  },
                   "deployments": {
                     "value": "[parameters('aiServiceModelDeployments')]"
                   },
@@ -770,11 +824,8 @@
                   "appInsightConnectionName": {
                     "value": "[parameters('appInsightConnectionName')]"
                   },
-                  "storageAccountId": {
-                    "value": "[reference(resourceId('Microsoft.Resources/deployments', 'storageAccount'), '2025-04-01').outputs.id.value]"
-                  },
-                  "storageAccountConnectionName": {
-                    "value": "storage-connection"
+                  "enableMultiService": {
+                    "value": "[parameters('enableMultiServiceAI')]"
                   }
                 },
                 "template": {
@@ -784,15 +835,12 @@
                     "_generator": {
                       "name": "bicep",
                       "version": "0.38.33.27573",
-                      "templateHash": "5052516130956844926"
+                      "templateHash": "9061302762960707156"
                     },
                     "description": "Creates an Azure Cognitive Services instance."
                   },
                   "parameters": {
                     "aiServiceName": {
-                      "type": "string"
-                    },
-                    "aiProjectName": {
                       "type": "string"
                     },
                     "location": {
@@ -829,12 +877,6 @@
                     "appInsightConnectionName": {
                       "type": "string"
                     },
-                    "storageAccountId": {
-                      "type": "string"
-                    },
-                    "storageAccountConnectionName": {
-                      "type": "string"
-                    },
                     "publicNetworkAccess": {
                       "type": "string",
                       "defaultValue": "Enabled",
@@ -847,6 +889,13 @@
                       "type": "object",
                       "defaultValue": {
                         "name": "S0"
+                      }
+                    },
+                    "enableMultiService": {
+                      "type": "bool",
+                      "defaultValue": true,
+                      "metadata": {
+                        "description": "Enable multi-service capabilities for vision and audio"
                       }
                     },
                     "allowedIpRules": {
@@ -865,7 +914,7 @@
                       "name": "[parameters('aiServiceName')]",
                       "location": "[parameters('location')]",
                       "sku": "[parameters('sku')]",
-                      "kind": "AIServices",
+                      "kind": "[if(parameters('enableMultiService'), 'AIServices', 'OpenAI')]",
                       "identity": {
                         "type": "SystemAssigned"
                       },
@@ -874,13 +923,15 @@
                         "customSubDomainName": "[parameters('customSubDomainName')]",
                         "networkAcls": "[parameters('networkAcls')]",
                         "publicNetworkAccess": "[parameters('publicNetworkAccess')]",
-                        "disableLocalAuth": "[parameters('disableLocalAuth')]"
+                        "disableLocalAuth": "[parameters('disableLocalAuth')]",
+                        "restore": false,
+                        "restrictOutboundNetworkAccess": false
                       }
                     },
                     {
                       "condition": "[not(empty(parameters('appInsightsId')))]",
                       "type": "Microsoft.CognitiveServices/accounts/connections",
-                      "apiVersion": "2023-10-01-preview",
+                      "apiVersion": "2025-04-01-preview",
                       "name": "[format('{0}/{1}', parameters('aiServiceName'), parameters('appInsightConnectionName'))]",
                       "properties": {
                         "category": "AppInsights",
@@ -894,41 +945,6 @@
                           "ApiType": "Azure",
                           "ResourceId": "[parameters('appInsightsId')]"
                         }
-                      },
-                      "dependsOn": [
-                        "[resourceId('Microsoft.CognitiveServices/accounts', parameters('aiServiceName'))]"
-                      ]
-                    },
-                    {
-                      "type": "Microsoft.CognitiveServices/accounts/connections",
-                      "apiVersion": "2023-10-01-preview",
-                      "name": "[format('{0}/{1}', parameters('aiServiceName'), parameters('storageAccountConnectionName'))]",
-                      "properties": {
-                        "category": "AzureStorageAccount",
-                        "target": "[parameters('storageAccountId')]",
-                        "authType": "AAD",
-                        "isSharedToAll": true,
-                        "metadata": {
-                          "ApiType": "Azure",
-                          "ResourceId": "[parameters('storageAccountId')]"
-                        }
-                      },
-                      "dependsOn": [
-                        "[resourceId('Microsoft.CognitiveServices/accounts', parameters('aiServiceName'))]"
-                      ]
-                    },
-                    {
-                      "type": "Microsoft.CognitiveServices/accounts/projects",
-                      "apiVersion": "2023-10-01-preview",
-                      "name": "[format('{0}/{1}', parameters('aiServiceName'), parameters('aiProjectName'))]",
-                      "location": "[parameters('location')]",
-                      "tags": "[parameters('tags')]",
-                      "identity": {
-                        "type": "SystemAssigned"
-                      },
-                      "properties": {
-                        "description": "AI Project for TechMart Chatbot",
-                        "displayName": "TechMart AI Project"
                       },
                       "dependsOn": [
                         "[resourceId('Microsoft.CognitiveServices/accounts', parameters('aiServiceName'))]"
@@ -965,32 +981,21 @@
                     },
                     "endpoint": {
                       "type": "string",
-                      "value": "[reference(resourceId('Microsoft.CognitiveServices/accounts', parameters('aiServiceName')), '2023-10-01-preview').endpoint]"
-                    },
-                    "projectId": {
-                      "type": "string",
-                      "value": "[resourceId('Microsoft.CognitiveServices/accounts/projects', parameters('aiServiceName'), parameters('aiProjectName'))]"
-                    },
-                    "projectEndpoint": {
-                      "type": "string",
-                      "value": "[format('https://{0}/api/projects/{1}', reference(resourceId('Microsoft.CognitiveServices/accounts', parameters('aiServiceName')), '2023-10-01-preview').endpoint, parameters('aiProjectName'))]"
+                      "value": "[format('{0}models', reference(resourceId('Microsoft.CognitiveServices/accounts', parameters('aiServiceName')), '2023-10-01-preview').endpoint)]"
                     }
                   }
                 }
-              },
-              "dependsOn": [
-                "[resourceId('Microsoft.Resources/deployments', 'storageAccount')]"
-              ]
+              }
             }
           ],
           "outputs": {
-            "projectId": {
+            "id": {
               "type": "string",
-              "value": "[reference(resourceId('Microsoft.Resources/deployments', 'aiServices'), '2025-04-01').outputs.projectId.value]"
+              "value": "[reference(resourceId('Microsoft.Resources/deployments', 'aiServices'), '2025-04-01').outputs.id.value]"
             },
-            "projectEndpoint": {
+            "endpoint": {
               "type": "string",
-              "value": "[reference(resourceId('Microsoft.Resources/deployments', 'aiServices'), '2025-04-01').outputs.projectEndpoint.value]"
+              "value": "[reference(resourceId('Microsoft.Resources/deployments', 'aiServices'), '2025-04-01').outputs.endpoint.value]"
             },
             "storageAccountId": {
               "type": "string",
@@ -1128,7 +1133,6 @@
           "tags": {
             "value": "[union(variables('tags'), createObject('azd-service-name', 'api'))]"
           },
-          "identityName": "[if(parameters('enableManagedIdentity'), createObject('value', format('{0}-mi', parameters('environmentName'))), createObject('value', ''))]",
           "appServicePlanId": {
             "value": "[reference(resourceId('Microsoft.Resources/deployments', 'appserviceplan'), '2025-04-01').outputs.id.value]"
           },
@@ -1138,26 +1142,12 @@
           "enableManagedIdentity": {
             "value": "[parameters('enableManagedIdentity')]"
           },
-          "azureExistingAIProjectResourceId": {
-            "value": "[variables('computedAIResourceId')]"
-          },
-          "aiFoundryEndpoint": {
-            "value": "[parameters('bFoundryEndpoint')]"
-          },
+          "aiFoundryEndpoint": "[if(variables('shouldUseExistingAI'), createObject('value', parameters('bFoundryEndpoint')), createObject('value', ''))]",
           "chatDeploymentName": {
             "value": "[variables('effectiveChatDeploymentName')]"
           },
           "audioDeploymentName": {
             "value": "[variables('effectiveAudioModelName')]"
-          },
-          "enableAzureMonitorTracing": {
-            "value": "[parameters('enableAzureMonitorTracing')]"
-          },
-          "azureTracingGenAIContentRecordingEnabled": {
-            "value": "[parameters('azureTracingGenAIContentRecordingEnabled')]"
-          },
-          "projectEndpoint": {
-            "value": ""
           }
         },
         "template": {
@@ -1167,7 +1157,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.38.33.27573",
-              "templateHash": "5516789162284352705"
+              "templateHash": "5308312099305610558"
             }
           },
           "parameters": {
@@ -1193,14 +1183,6 @@
               "type": "bool",
               "defaultValue": false
             },
-            "identityName": {
-              "type": "string",
-              "defaultValue": ""
-            },
-            "azureExistingAIProjectResourceId": {
-              "type": "string",
-              "defaultValue": ""
-            },
             "aiFoundryEndpoint": {
               "type": "string",
               "defaultValue": ""
@@ -1210,18 +1192,6 @@
               "defaultValue": ""
             },
             "audioDeploymentName": {
-              "type": "string",
-              "defaultValue": ""
-            },
-            "enableAzureMonitorTracing": {
-              "type": "bool",
-              "defaultValue": false
-            },
-            "azureTracingGenAIContentRecordingEnabled": {
-              "type": "bool",
-              "defaultValue": false
-            },
-            "projectEndpoint": {
               "type": "string",
               "defaultValue": ""
             }
@@ -1263,18 +1233,11 @@
             ],
             "infrastructureEnv": [],
             "hasAIConfig": "[or(parameters('enableAIServices'), or(not(empty(parameters('aiFoundryEndpoint'))), not(empty(parameters('chatDeploymentName')))))]",
-            "aiEnv": "[if(variables('hasAIConfig'), createArray(createObject('name', 'AZURE_EXISTING_AIPROJECT_RESOURCE_ID', 'value', parameters('azureExistingAIProjectResourceId')), createObject('name', 'EXISTING_AI_FOUNDRY_ENDPOINT', 'value', parameters('aiFoundryEndpoint')), createObject('name', 'AZURE_INFERENCE_ENDPOINT', 'value', parameters('aiFoundryEndpoint')), createObject('name', 'AZURE_CLIENT_ID', 'value', 'system-assigned-managed-identity'), createObject('name', 'AZURE_AI_CHAT_DEPLOYMENT_NAME', 'value', parameters('chatDeploymentName')), createObject('name', 'AZURE_AI_AUDIO_DEPLOYMENT_NAME', 'value', parameters('audioDeploymentName')), createObject('name', 'ENABLE_AZURE_MONITOR_TRACING', 'value', string(parameters('enableAzureMonitorTracing'))), createObject('name', 'AZURE_TRACING_GEN_AI_CONTENT_RECORDING_ENABLED', 'value', string(parameters('azureTracingGenAIContentRecordingEnabled'))), createObject('name', 'AZURE_EXISTING_AIPROJECT_ENDPOINT', 'value', parameters('projectEndpoint'))), createArray())]",
+            "aiEnv": "[if(variables('hasAIConfig'), createArray(createObject('name', 'AZURE_INFERENCE_ENDPOINT', 'value', parameters('aiFoundryEndpoint')), createObject('name', 'AZURE_CLIENT_ID', 'value', 'system-assigned-managed-identity'), createObject('name', 'AZURE_AI_CHAT_DEPLOYMENT_NAME', 'value', parameters('chatDeploymentName')), createObject('name', 'AZURE_AI_AUDIO_DEPLOYMENT_NAME', 'value', parameters('audioDeploymentName'))), createArray())]",
             "env": "[concat(concat(variables('baseEnv'), variables('aiEnv')), variables('infrastructureEnv'))]",
             "appSettings": "[reduce(variables('env'), createObject(), lambda('acc', 'curr', union(lambdaVariables('acc'), createObject(format('{0}', lambdaVariables('curr').name), lambdaVariables('curr').value))))]"
           },
           "resources": [
-            {
-              "condition": "[parameters('enableManagedIdentity')]",
-              "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
-              "apiVersion": "2023-01-31",
-              "name": "[parameters('identityName')]",
-              "location": "[parameters('location')]"
-            },
             {
               "type": "Microsoft.Resources/deployments",
               "apiVersion": "2025-04-01",
@@ -1336,7 +1299,7 @@
                     "_generator": {
                       "name": "bicep",
                       "version": "0.38.33.27573",
-                      "templateHash": "13421784193254680722"
+                      "templateHash": "4232527214361088206"
                     },
                     "description": "Creates an Azure App Service in an existing Azure App Service plan."
                   },
@@ -1501,6 +1464,15 @@
                     {
                       "type": "Microsoft.Web/sites/config",
                       "apiVersion": "2022-09-01",
+                      "name": "[format('{0}/{1}', parameters('name'), 'appsettings')]",
+                      "properties": "[union(variables('baseAppSettings'), variables('pythonAppSettings'))]",
+                      "dependsOn": [
+                        "[resourceId('Microsoft.Web/sites', parameters('name'))]"
+                      ]
+                    },
+                    {
+                      "type": "Microsoft.Web/sites/config",
+                      "apiVersion": "2022-09-01",
                       "name": "[format('{0}/{1}', parameters('name'), 'logs')]",
                       "properties": {
                         "applicationLogs": {
@@ -1524,63 +1496,7 @@
                       },
                       "dependsOn": [
                         "[resourceId('Microsoft.Web/sites', parameters('name'))]",
-                        "[resourceId('Microsoft.Resources/deployments', format('{0}-appSettings', parameters('name')))]"
-                      ]
-                    },
-                    {
-                      "type": "Microsoft.Resources/deployments",
-                      "apiVersion": "2025-04-01",
-                      "name": "[format('{0}-appSettings', parameters('name'))]",
-                      "properties": {
-                        "expressionEvaluationOptions": {
-                          "scope": "inner"
-                        },
-                        "mode": "Incremental",
-                        "parameters": {
-                          "name": {
-                            "value": "[parameters('name')]"
-                          },
-                          "appSettings": {
-                            "value": "[union(variables('baseAppSettings'), variables('pythonAppSettings'))]"
-                          }
-                        },
-                        "template": {
-                          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
-                          "contentVersion": "1.0.0.0",
-                          "metadata": {
-                            "_generator": {
-                              "name": "bicep",
-                              "version": "0.38.33.27573",
-                              "templateHash": "16818702544742325324"
-                            },
-                            "description": "Updates app settings for an Azure App Service."
-                          },
-                          "parameters": {
-                            "name": {
-                              "type": "string",
-                              "metadata": {
-                                "description": "The name of the app service resource within the current resource group scope"
-                              }
-                            },
-                            "appSettings": {
-                              "type": "secureObject",
-                              "metadata": {
-                                "description": "The app settings to be applied to the app service"
-                              }
-                            }
-                          },
-                          "resources": [
-                            {
-                              "type": "Microsoft.Web/sites/config",
-                              "apiVersion": "2022-09-01",
-                              "name": "[format('{0}/{1}', parameters('name'), 'appsettings')]",
-                              "properties": "[parameters('appSettings')]"
-                            }
-                          ]
-                        }
-                      },
-                      "dependsOn": [
-                        "[resourceId('Microsoft.Web/sites', parameters('name'))]"
+                        "[resourceId('Microsoft.Web/sites/config', parameters('name'), 'appsettings')]"
                       ]
                     }
                   ],
@@ -1612,7 +1528,12 @@
                 "hasAIConfig": "[variables('hasAIConfig')]",
                 "aiFoundryEndpoint": "[parameters('aiFoundryEndpoint')]",
                 "chatDeploymentName": "[parameters('chatDeploymentName')]",
-                "audioDeploymentName": "[parameters('audioDeploymentName')]"
+                "audioDeploymentName": "[parameters('audioDeploymentName')]",
+                "receivedParameters": {
+                  "aiFoundryEndpoint": "[parameters('aiFoundryEndpoint')]",
+                  "chatDeploymentName": "[parameters('chatDeploymentName')]",
+                  "audioDeploymentName": "[parameters('audioDeploymentName')]"
+                }
               }
             },
             "SERVICE_API_IDENTITY_PRINCIPAL_ID": {
@@ -1637,6 +1558,7 @@
         }
       },
       "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'ai')]",
         "[resourceId('Microsoft.Resources/deployments', 'appserviceplan')]"
       ]
     },
@@ -1814,6 +1736,8 @@
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "existing-ai-rbac-instructions",
+      "subscriptionId": "[parameters('existingAISubscriptionId')]",
+      "resourceGroup": "[parameters('existingAIResourceGroupName')]",
       "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
@@ -1834,9 +1758,9 @@
             "_generator": {
               "name": "bicep",
               "version": "0.38.33.27573",
-              "templateHash": "4535156078739811206"
+              "templateHash": "5272708852240265849"
             },
-            "description": "Note: This module is a placeholder. RBAC for existing AI Foundry resources should be configured manually or through the Azure portal/CLI after deployment."
+            "description": "Creates RBAC assignment for App Service Managed Identity to access existing AI Foundry resources."
           },
           "parameters": {
             "aiFoundryResourceId": {
@@ -1852,7 +1776,24 @@
               }
             }
           },
-          "resources": [],
+          "variables": {
+            "cognitiveServicesOpenAIUserRoleId": "5e0bd9bd-7b93-4f28-af87-19fc36ad61bd",
+            "roleAssignmentName": "[guid(parameters('aiFoundryResourceId'), parameters('appServicePrincipalId'), variables('cognitiveServicesOpenAIUserRoleId'))]",
+            "aiServiceName": "[split(parameters('aiFoundryResourceId'), '/')[8]]"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[format('Microsoft.CognitiveServices/accounts/{0}', variables('aiServiceName'))]",
+              "name": "[variables('roleAssignmentName')]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('cognitiveServicesOpenAIUserRoleId'))]",
+                "principalId": "[parameters('appServicePrincipalId')]",
+                "principalType": "ServicePrincipal"
+              }
+            }
+          ],
           "outputs": {
             "aiFoundryResourceId": {
               "type": "string",
@@ -1862,9 +1803,21 @@
               "type": "string",
               "value": "[parameters('appServicePrincipalId')]"
             },
-            "instructions": {
+            "roleAssignmentName": {
               "type": "string",
-              "value": "[format('Run: az role assignment create --role \"Cognitive Services OpenAI User\" --assignee {0} --scope {1}', parameters('appServicePrincipalId'), parameters('aiFoundryResourceId'))]"
+              "value": "[variables('roleAssignmentName')]"
+            },
+            "roleDefinitionId": {
+              "type": "string",
+              "value": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('cognitiveServicesOpenAIUserRoleId'))]"
+            },
+            "rbacInstructions": {
+              "type": "string",
+              "value": "RBAC assignment created automatically via Bicep deployment"
+            },
+            "rbacAssignmentId": {
+              "type": "string",
+              "value": "[extensionResourceId(resourceId('Microsoft.CognitiveServices/accounts', variables('aiServiceName')), 'Microsoft.Authorization/roleAssignments', variables('roleAssignmentName'))]"
             }
           }
         }
@@ -1875,6 +1828,10 @@
     }
   ],
   "outputs": {
+    "deploymentWarning": {
+      "type": "string",
+      "value": "[if(variables('isDualModelSupported'), 'Both models deployed successfully', 'Audio model skipped - unsupported region. Use swedencentral for full support.')]"
+    },
     "DEBUG_PARAMETERS": {
       "type": "object",
       "value": {
@@ -1891,8 +1848,6 @@
         "resourceToken": "[variables('resourceToken')]",
         "appServiceName": "[format('{0}app', replace(parameters('environmentName'), '-', ''))]",
         "appServicePlanName": "[if(not(empty(parameters('appServicePlanName'))), parameters('appServicePlanName'), format('{0}-asplan', parameters('environmentName')))]",
-        "managedIdentityName": "[if(parameters('enableManagedIdentity'), format('{0}-mi', parameters('environmentName')), '')]",
-        "aiProjectName": "[if(not(empty(parameters('aiProjectName'))), parameters('aiProjectName'), format('{0}{1}', variables('abbrs').machineLearningServicesWorkspaces, variables('resourceToken')))]",
         "aiServicesName": "[if(not(empty(parameters('aiServicesName'))), parameters('aiServicesName'), format('{0}{1}', variables('abbrs').cognitiveServicesAccounts, variables('resourceToken')))]",
         "storageAccountName": "[if(not(empty(parameters('storageAccountName'))), parameters('storageAccountName'), format('{0}{1}', variables('abbrs').storageStorageAccounts, variables('resourceToken')))]"
       }
@@ -1905,7 +1860,7 @@
         "shouldUseExistingAI": "[variables('shouldUseExistingAI')]",
         "existingEndpoint": "[parameters('bFoundryEndpoint')]",
         "existingResourceId": "[variables('computedAIResourceId')]",
-        "configurationMethod": "environment-variables",
+        "configurationMethod": "direct-environment-variables",
         "rbacInstructions": "[if(variables('shouldUseExistingAI'), 'Check existingAIRbacInstructions module output', 'Auto-configured for new AI services')]"
       }
     },
@@ -1921,10 +1876,6 @@
       "type": "string",
       "value": "[tenant().tenantId]"
     },
-    "AZURE_EXISTING_AIPROJECT_RESOURCE_ID": {
-      "type": "string",
-      "value": "[variables('computedAIResourceId')]"
-    },
     "AZURE_AI_CHAT_DEPLOYMENT_NAME": {
       "type": "string",
       "value": "[if(variables('shouldEnableAI'), variables('effectiveChatDeploymentName'), '')]"
@@ -1933,17 +1884,13 @@
       "type": "string",
       "value": ""
     },
-    "AZURE_EXISTING_AIPROJECT_ENDPOINT": {
+    "AZURE_INFERENCE_ENDPOINT": {
       "type": "string",
-      "value": ""
+      "value": "[if(variables('shouldUseExistingAI'), parameters('bFoundryEndpoint'), '')]"
     },
-    "ENABLE_AZURE_MONITOR_TRACING": {
-      "type": "bool",
-      "value": "[if(variables('shouldEnableAppInsights'), parameters('enableAzureMonitorTracing'), false())]"
-    },
-    "AZURE_TRACING_GEN_AI_CONTENT_RECORDING_ENABLED": {
-      "type": "bool",
-      "value": "[if(variables('shouldEnableAppInsights'), parameters('azureTracingGenAIContentRecordingEnabled'), false())]"
+    "AZURE_AI_AUDIO_DEPLOYMENT_NAME": {
+      "type": "string",
+      "value": "[if(variables('shouldEnableAI'), variables('effectiveAudioModelName'), '')]"
     },
     "SERVICE_API_IDENTITY_PRINCIPAL_ID": {
       "type": "string",

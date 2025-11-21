@@ -137,8 +137,11 @@ def process_audio_message(user_message: str, audio_path: str) -> str:
         client = get_azure_client()
         config = get_model_config()
         
+        logger.info(f"Audio processing - Model: {config.model}, Audio Model: {config.audio_model}")
+        
         # Check if we have an audio-capable model
         if not is_audio_model_available(config.audio_model):
+            logger.warning(f"Audio model not available: {config.audio_model}, using fallback")
             return get_audio_fallback_response(user_message, audio_path)
         
         # Encode audio to base64
@@ -159,10 +162,13 @@ def process_audio_message(user_message: str, audio_path: str) -> str:
             return response
         
         # Extract transcription and response from successful API call
-        audio_transcript = ""
         response_content = response.choices[0].message.content
         
-        # Check if we have audio transcript available
+        # For audio models, the transcription is included in the content
+        # Extract the actual transcription from the formatted response content
+        audio_transcript = response_content if response_content else ""
+        
+        # Check if we have separate audio transcript available (fallback)
         if hasattr(response.choices[0].message, 'audio') and response.choices[0].message.audio:
             if hasattr(response.choices[0].message.audio, 'transcript'):
                 audio_transcript = response.choices[0].message.audio.transcript
@@ -175,7 +181,7 @@ def process_audio_message(user_message: str, audio_path: str) -> str:
             os.path.basename(audio_path)
         )
         
-        logger.info("Successfully processed audio message with Azure OpenAI audio model")
+        logger.info(f"Successfully processed audio message with Azure OpenAI audio model")
         return formatted_response
         
     except Exception as e:
@@ -408,25 +414,6 @@ def build_audio_messages(user_message: str, audio_data: str, audio_format: str) 
     return messages
 
 
-def get_audio_model_params() -> Dict:
-    """
-    Get model parameters optimized for audio processing.
-    
-    Returns:
-        Dictionary with audio-optimized parameters
-    """
-    base_params = get_model_config().get_model_params()
-    
-    # Optimize for audio processing
-    audio_params = base_params.copy()
-    audio_params.update({
-        'temperature': 0.3,  # Lower temperature for more accurate transcription
-        'max_tokens': 2000,  # Allow for detailed analysis
-    })
-    
-    return audio_params
-
-
 def format_audio_response(response_content: str, transcript: str, user_message: str, filename: str) -> str:
     """
     Format the audio processing response for display.
@@ -553,49 +540,16 @@ def get_audio_fallback_response(user_message: str, audio_path: str) -> str:
     Returns:
         Fallback response explaining limitation
     """
-    audio_size = os.path.getsize(audio_path)
     file_name = os.path.basename(audio_path)
-    file_size_mb = audio_size / (1024 * 1024)
+    file_size_mb = os.path.getsize(audio_path) / (1024 * 1024)
     
     return (
-        f"🎤 **Audio File Successfully Received**\n\n"
-        f"**File**: {file_name}\n"
-        f"**Size**: {file_size_mb:.1f} MB ({audio_size:,} bytes)\n"
-        f"**Your Request**: {user_message}\n\n"
-        f"**📋 File Analysis Complete**:\n"
-        f"✅ Audio file format: {get_audio_format(audio_path).upper()}\n"
-        f"✅ File integrity: Valid\n"
-        f"✅ Upload successful: Ready for processing\n\n"
-        f"**🔧 Current Setup Status**:\n"
-        f"- **Chat Model**: `{get_model_config().model}` \n"
-        f"- **Audio Model**: `{get_model_config().audio_model}` \n"
-        f"- **Azure AI Foundry**: Connected ✅\n"
-        f"- **File Processing**: Working ✅\n"
-        f"- **Audio Transcription**: Requires direct audio model support\n\n"
-        f"**💡 Next Steps for Full Audio Processing**:\n"
-        f"Your current Azure AI Foundry deployment is working perfectly for text and image processing. "
-        f"For direct audio transcription, you would need:\n\n"
-        f"1. **Azure OpenAI Service** (separate from AI Foundry) with `gpt-4o-audio-preview`\n"
-        f"2. **Or** Azure Speech Services for transcription + your current model for analysis\n"
-        f"3. **Or** Use external transcription service + current setup\n\n"
-        f"**🎯 What's Working Right Now**:\n"
-        f"- File upload and validation ✅\n"
-        f"- Image analysis with multimodal capabilities ✅\n"
-        f"- Text-based customer service scenarios ✅\n"
-        f"- Structured output and reasoning ✅\n\n"
-        f"Your TechMart AI assistant is fully functional for all other capabilities!"
+        f"🎤 **Audio File Received**: {file_name} ({file_size_mb:.1f} MB)\n\n"
+        f"**Request**: {user_message}\n\n"
+        f"**Status**: Audio file uploaded successfully. Current model (`{get_model_config().model}`) "
+        f"supports text and image processing. For audio transcription, configure an audio-capable model "
+        f"or use Azure Speech Services.\n\n"
+        f"**Available Features**: Text chat ✅ | Image analysis ✅ | Structured output ✅"
     )
 
 
-def get_multimodal_example() -> Dict[str, str]:
-    """
-    Get example multimodal interaction for documentation.
-    
-    Returns:
-        Dictionary with example usage patterns
-    """
-    return {
-        "image_example": "Upload product image + 'What defects do you see?'",
-        "audio_example": "Upload voice recording + 'Transcribe and summarize'", 
-        "description": "Process images and audio with AI analysis capabilities"
-    }

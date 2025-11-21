@@ -305,6 +305,20 @@
                 </div>
                 
                 <div class="form-group">
+                    {% if use_managed_identity %}
+                    <label for="api_key">API Key <span style="color: #28a745; font-weight: bold;">(Managed Identity Enabled)</span></label>
+                    <input type="password" 
+                           id="api_key" 
+                           name="api_key" 
+                           value="{{ config.display_api_key }}" 
+                           placeholder="Not required - Using Managed Identity"
+                           disabled
+                           style="background-color: #e8f5e8; border-color: #28a745;">
+                    <div class="help-text" style="color: #28a745;">
+                        <strong>✅ Managed Identity is enabled</strong> - API key authentication is not required. 
+                        The app will automatically authenticate using Azure's system-assigned managed identity for secure, keyless authentication.
+                    </div>
+                    {% else %}
                     <label for="api_key">API Key *</label>
                     <input type="password" 
                            id="api_key" 
@@ -315,7 +329,9 @@
                            required>
                     <div class="help-text">
                         Your Azure AI Foundry API key. Keep this secure and never share it publicly.
+                        <br><em>💡 For production deployments, consider using Managed Identity instead of API keys for enhanced security.</em>
                     </div>
+                    {% endif %}
                 </div>
                 
                 <div class="form-row">
@@ -672,6 +688,7 @@
             const endpoint = document.getElementById('endpoint').value.trim();
             const apiKey = document.getElementById('api_key').value.trim();
             const isApiKeyDisabled = document.getElementById('api_key').disabled;
+            const useManagedIdentity = {{ 'true' if use_managed_identity else 'false' }};
             
             // Check required fields based on authentication mode
             if (!endpoint) {
@@ -679,8 +696,9 @@
                 return false;
             }
             
-            if (!isApiKeyDisabled && !apiKey) {
-                alert('❌ API key is required for the chatbot to function.');
+            // API key is only required when NOT using Managed Identity
+            if (!useManagedIdentity && !isApiKeyDisabled && !apiKey) {
+                alert('❌ API key is required when not using Managed Identity. Please enter your API key or configure Managed Identity authentication.');
                 return false;
             }
             

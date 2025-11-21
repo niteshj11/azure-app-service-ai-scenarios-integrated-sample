@@ -10,16 +10,9 @@ eliminating the need for API keys. Configuration sources in priority order:
 import os
 import json
 import logging
-from typing import Optional, Dict, Any, Tuple
+from typing import Dict, Any, Tuple
 from dataclasses import dataclass, asdict
 from pathlib import Path
-
-# Azure Managed Identity integration
-try:
-    from azure.identity import DefaultAzureCredential, ManagedIdentityCredential
-    AZURE_IDENTITY_AVAILABLE = True
-except ImportError:
-    AZURE_IDENTITY_AVAILABLE = False
 
 # Setup logging
 logger = logging.getLogger(__name__)

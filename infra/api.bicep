@@ -11,14 +11,10 @@ param enableAIServices bool = false
 
 // Optional resource parameters
 // identityName parameter removed - using system-assigned managed identity only
-param azureExistingAIProjectResourceId string = ''
 param aiFoundryEndpoint string = ''
 param chatDeploymentName string = ''
 param audioDeploymentName string = ''
 // Embedding and search parameters archived - not used without search functionality
-param enableAzureMonitorTracing bool = false
-param azureTracingGenAIContentRecordingEnabled bool = false
-param projectEndpoint string = ''
 // applicationInsightsName parameter archived - not used in simplified config
 
 // User-assigned managed identity removed - using system-assigned identity only
@@ -74,14 +70,6 @@ var infrastructureEnv = [
 var hasAIConfig = enableAIServices || (!empty(aiFoundryEndpoint) || !empty(chatDeploymentName))
 var aiEnv = hasAIConfig ? [
   {
-    name: 'AZURE_EXISTING_AIPROJECT_RESOURCE_ID'
-    value: azureExistingAIProjectResourceId
-  }
-  {
-    name: 'EXISTING_AI_FOUNDRY_ENDPOINT'
-    value: aiFoundryEndpoint
-  }
-  {
     name: 'AZURE_INFERENCE_ENDPOINT'
     value: aiFoundryEndpoint
   }
@@ -96,28 +84,6 @@ var aiEnv = hasAIConfig ? [
   {
     name: 'AZURE_AI_AUDIO_DEPLOYMENT_NAME'
     value: audioDeploymentName
-  }
-  // Multi-modal capabilities environment variables
-  {
-    name: 'AZURE_AI_VISION_ENABLED'
-    value: 'true'
-  }
-  {
-    name: 'AZURE_AI_MULTIMODAL_ENABLED'
-    value: 'true'
-  }
-  // Embedding and search environment variables archived
-  {
-    name: 'ENABLE_AZURE_MONITOR_TRACING'
-    value: string(enableAzureMonitorTracing)
-  }
-  {
-    name: 'AZURE_TRACING_GEN_AI_CONTENT_RECORDING_ENABLED'
-    value: string(azureTracingGenAIContentRecordingEnabled)
-  }
-  {
-    name: 'AZURE_EXISTING_AIPROJECT_ENDPOINT'
-    value: projectEndpoint
   }
 ] : []
 

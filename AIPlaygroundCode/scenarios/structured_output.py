@@ -32,7 +32,7 @@ def handle_structured_message(user_message: str) -> str:
     client = get_azure_client()
     config = get_model_config()
     
-    output_type = detect_structure_type(user_message)
+    output_type = "structured_data"
     messages = build_structured_messages(user_message, output_type)
     
     # Handle both OpenAI SDK and azure.ai.inference
@@ -61,23 +61,7 @@ def handle_structured_message(user_message: str) -> str:
     return format_structured_response(structured_data, output_type)
 
 
-def detect_structure_type(user_message: str) -> str:
-    """Detect structure type from user message."""
-    message_lower = user_message.lower()
-    
-    structure_patterns = {
-        "product_info": ["product", "item", "catalog", "inventory"],
-        "customer_data": ["customer", "user", "client", "contact"],
-        "business_analysis": ["analysis", "report", "metrics", "kpi"],
-        "task_list": ["tasks", "todo", "steps", "checklist"],
-        "general": []
-    }
-    
-    for structure_type, keywords in structure_patterns.items():
-        if any(keyword in message_lower for keyword in keywords):
-            return structure_type
-    
-    return "general"
+
 
 
 def build_structured_messages(user_message: str, output_type: str) -> List[Dict[str, str]]:

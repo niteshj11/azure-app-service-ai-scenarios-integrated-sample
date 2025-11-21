@@ -7,6 +7,7 @@ best practices for production deployment.
 """
 
 import logging
+import os
 from flask import Flask, render_template, request, session, jsonify, redirect, url_for
 import markdown
 from markupsafe import Markup
@@ -64,12 +65,12 @@ def check_configuration():
     try:
         # Check if session is getting too large
         session_size = len(str(session))
-        if session_size > 3000:  # Conservative limit
+        if session_size > 4000:  # Increased limit 
             logger.warning(f"Large session detected ({session_size} bytes), cleaning up")
             
-            # Simple session cleanup to avoid recursion - just clear conversation data
+            # Only clear compressed conversation to free up space
+            # Keep the active conversation intact for user experience
             session.pop('conversation_compressed', None)
-            session.pop('conversation', None)
             session.modified = True
             
     except Exception as e:
@@ -121,8 +122,14 @@ def chat():
         
         if not config.endpoint or not config.endpoint.strip():
             missing_configs.append("Azure AI Endpoint")
-        if not config.api_key or not config.api_key.strip():
+        
+        # Check if using Managed Identity
+        use_managed_identity = os.getenv('AZURE_CLIENT_ID') == 'system-assigned-managed-identity'
+        
+        # API key is only required when NOT using Managed Identity
+        if not use_managed_identity and (not config.api_key or not config.api_key.strip()):
             missing_configs.append("API Key")
+        
         if not config.model or not config.model.strip():
             missing_configs.append("Model Name")
         
@@ -155,6 +162,12 @@ def chat():
         # Determine scenario and route to appropriate handler
         scenario = request.form.get('scenario', 'chat')
         uploaded_file = request.files.get('file') or request.files.get('audio') or request.files.get('image')
+        
+        # Debug logging to see what files are received
+        logger.info(f"DEBUG - Request files: {list(request.files.keys())}")
+        logger.info(f"DEBUG - Form data keys: {list(request.form.keys())}")
+        logger.info(f"DEBUG - Scenario: {scenario}")
+        logger.info(f"DEBUG - Uploaded file: {uploaded_file.filename if uploaded_file else 'None'}")
         
         if scenario in ['image', 'audio']:
             # Multimodal scenarios - require file upload
@@ -201,8 +214,14 @@ def testing_chat_handler():
         
         if not config.endpoint or not config.endpoint.strip():
             missing_configs.append("Azure AI Endpoint")
-        if not config.api_key or not config.api_key.strip():
+        
+        # Check if using Managed Identity
+        use_managed_identity = os.getenv('AZURE_CLIENT_ID') == 'system-assigned-managed-identity'
+        
+        # API key is only required when NOT using Managed Identity
+        if not use_managed_identity and (not config.api_key or not config.api_key.strip()):
             missing_configs.append("API Key")
+        
         if not config.model or not config.model.strip():
             missing_configs.append("Model Name")
         
@@ -271,9 +290,14 @@ def settings():
     try:
         config = get_model_config()
         message = session.pop('settings_message', None)
-        return render_template('settings.html', config=config, message=message)
+        
+        # Check if using Managed Identity for template display
+        use_managed_identity = os.getenv('AZURE_CLIENT_ID') == 'system-assigned-managed-identity'
+        
+        return render_template('settings.html', config=config, message=message, use_managed_identity=use_managed_identity)
     except Exception as e:
-        return format_error_response(e), 500
+        # Temporarily show the actual error for debugging
+        return f"Settings page error: {str(e)}", 500
 
 
 @app.route('/settings', methods=['POST'])
@@ -318,10 +342,14 @@ def update_settings():
             }
             return redirect(url_for('settings'))
         
-        if not form_data['api_key'] or not form_data['api_key'].strip():
+        # Check if using Managed Identity (when AZURE_CLIENT_ID is set to 'system-assigned-managed-identity')
+        use_managed_identity = os.getenv('AZURE_CLIENT_ID') == 'system-assigned-managed-identity'
+        
+        # API key is only required when NOT using Managed Identity
+        if not use_managed_identity and (not form_data['api_key'] or not form_data['api_key'].strip()):
             session['settings_message'] = {
                 'type': 'error',
-                'text': 'Azure API key is required. Please enter your Azure AI Foundry API key.'
+                'text': 'Azure API key is required when not using Managed Identity. Please enter your Azure AI Foundry API key or configure Managed Identity.'
             }
             return redirect(url_for('settings'))
         
@@ -358,6 +386,36 @@ def update_settings():
     
     return redirect(url_for('settings'))
 
+
+@app.route('/debug_config')
+def debug_config():
+    """Debug endpoint to see current configuration values."""
+    import os
+    config = get_model_config()
+    
+    env_vars = {
+        'AZURE_INFERENCE_ENDPOINT': os.getenv('AZURE_INFERENCE_ENDPOINT'),
+        'AZURE_CLIENT_ID': os.getenv('AZURE_CLIENT_ID'),
+        'AZURE_AI_CHAT_DEPLOYMENT_NAME': os.getenv('AZURE_AI_CHAT_DEPLOYMENT_NAME'),
+        'AZURE_AI_AUDIO_DEPLOYMENT_NAME': os.getenv('AZURE_AI_AUDIO_DEPLOYMENT_NAME'),
+    }
+    
+    config_values = {
+        'endpoint': config.endpoint,
+        'api_key': config.api_key[:10] + '...' if config.api_key else None,
+        'model': config.model,
+        'audio_model': config.audio_model,
+        'display_endpoint': config.display_endpoint,
+        'display_model': config.display_model,
+        'display_audio_model': config.display_audio_model,
+        'is_using_managed_identity': config.is_using_managed_identity(),
+    }
+    
+    return jsonify({
+        'env_vars': env_vars,
+        'config_values': config_values,
+        'is_production': config_manager.is_production
+    })
 
 @app.route('/test_config', methods=['POST'])
 def test_config():

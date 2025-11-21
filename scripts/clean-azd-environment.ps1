@@ -53,7 +53,7 @@ if ($ComprehensiveClean) {
     $env:AZURE_RESOURCE_GROUP = $null
     $env:AZURE_TENANT_ID = $null
     
-    # Clear AI Foundry related parameters
+    # Clear AI Foundry related parameters (legacy)
     $env:aiSetupChoice = $null
     $env:aiFoundryEndpoint = $null
     $env:yourChatModelName = $null
@@ -62,8 +62,17 @@ if ($ComprehensiveClean) {
     $env:chatDeploymentName = $null
     $env:audioDeploymentName = $null
     
+    # Clear new azure.yaml environment variables
+    $env:principalId = $null
+    $env:aSetupChoice = $null
+    $env:bFoundryEndpoint = $null
+    $env:cChatModelName = $null
+    $env:dAudioModelName = $null
+    $env:eAILocation = $null
+    
     Write-Host "   ✓ Cleared Azure environment variables" -ForegroundColor Green
-    Write-Host "   ✓ Cleared AI Foundry parameters" -ForegroundColor Green
+    Write-Host "   ✓ Cleared AI Foundry parameters (legacy)" -ForegroundColor Green
+    Write-Host "   ✓ Cleared new azure.yaml environment variables" -ForegroundColor Green
     
     # Clear global azd config (backup first)
     $globalAzdConfig = "$env:USERPROFILE\.azd"

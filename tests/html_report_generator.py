@@ -31,7 +31,7 @@ class HTMLReportGenerator:
             import os
             sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
             
-            from config import get_model_config, is_configured
+            from AIPlaygroundCode.config import get_model_config, is_configured
             
             if is_configured():
                 config = get_model_config()

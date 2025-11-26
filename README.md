@@ -26,8 +26,8 @@ This sample application demonstrates how to implement various AI scenarios on Az
 
 1. **Clone and Deploy**
    ```bash
-   git clone <repository-url>
-   cd ChatBotOpenAIAppService
+   git clone https://github.com/Azure-Samples/azure-app-service-ai-scenarios-integrated-sample.git
+   cd azure-app-service-ai-scenarios-integrated-sample
    azd up
    ```
    

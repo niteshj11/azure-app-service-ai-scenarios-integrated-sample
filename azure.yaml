@@ -1,8 +1,9 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
 
-name: techmart-ai-chatbot
+name: azure-app-service-ai-scenarios
 metadata:
-  template: techmart-ai-chatbot@0.0.1-beta
+  template: azure-app-service-ai-scenarios@1.0.0
+  description: "Comprehensive Azure App Service AI scenarios with Azure AI Foundry integration"
 
 services:
   api:
@@ -13,3 +14,332 @@ services:
 infra:
   provider: bicep
   path: infra
+
+hooks:
+  preprovision:
+    shell: pwsh
+    interactive: true
+    run: |
+      # Set up principal ID for RBAC (required for role assignments)
+      try {
+          $currentUser = az ad signed-in-user show --query id --output tsv
+          if ($currentUser) {
+              azd env set principalId $currentUser
+          }
+      } catch {
+          # Ignore error - can be set manually if needed
+      }
+      
+      # Collect AI Setup parameters BEFORE provisioning starts
+      Write-Host "🤖 Configuring AI Services Setup..." -ForegroundColor Cyan
+      
+      # Check if setup choice is already configured
+      $setupChoice = $null
+      $output = azd env get-value aSetupChoice 2>&1
+      if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrEmpty($output) -and -not $output.ToString().Contains("ERROR")) {
+          $setupChoice = $output.ToString().Trim()
+          Write-Host "✓ Found existing setup choice: $setupChoice" -ForegroundColor Green
+      } else {
+          # Prompt for setup choice
+          do {
+              $setupChoice = Read-Host "🚀 AI Setup: Choose new (create AI services) or existing (use your AI Foundry project) [new/existing]"
+              if ($setupChoice) {
+                  $setupChoice = $setupChoice.ToLower().Trim()
+              }
+              if ($setupChoice -ne "new" -and $setupChoice -ne "existing") {
+                  Write-Host "Please enter either 'new' or 'existing'" -ForegroundColor Yellow
+              }
+          } while ([string]::IsNullOrEmpty($setupChoice) -or ($setupChoice -ne "new" -and $setupChoice -ne "existing"))
+          
+          azd env set aSetupChoice $setupChoice
+          Write-Host "✓ Set AI setup choice: $setupChoice" -ForegroundColor Green
+      }
+      
+      if ($setupChoice -eq "existing") {
+          # Collect existing AI Foundry details
+          $foundryEndpoint = $null
+          $chatModel = $null
+          $audioModel = $null
+          
+          $output = azd env get-value bFoundryEndpoint 2>&1
+          if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrEmpty($output) -and -not $output.ToString().Contains("ERROR")) {
+              $foundryEndpoint = $output.ToString().Trim()
+              Write-Host "✓ Found existing endpoint: $foundryEndpoint" -ForegroundColor Green
+          } else {
+              $foundryEndpoint = Read-Host "📍 AI Foundry Endpoint: Enter your project endpoint URL (e.g., https://myproject.openai.azure.com/)"
+              azd env set bFoundryEndpoint $foundryEndpoint
+              Write-Host "✓ Set AI Foundry endpoint" -ForegroundColor Green
+          }
+          
+          $output = azd env get-value cChatModelName 2>&1
+          if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrEmpty($output) -and -not $output.ToString().Contains("ERROR")) {
+              $chatModel = $output.ToString().Trim()
+              Write-Host "✓ Found existing chat model: $chatModel" -ForegroundColor Green
+          } else {
+              $chatModel = Read-Host "💬 Chat Model: Enter your deployment name (e.g., gpt-4o-mini, gpt-4, gpt-35-turbo)"
+              azd env set cChatModelName $chatModel
+              Write-Host "✓ Set chat model: $chatModel" -ForegroundColor Green
+          }
+          
+          $output = azd env get-value dAudioModelName 2>&1
+          if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrEmpty($output) -and -not $output.ToString().Contains("ERROR")) {
+              $audioModel = $output.ToString().Trim()
+              Write-Host "✓ Found existing audio model: $audioModel" -ForegroundColor Green
+          } else {
+              $audioModel = Read-Host "🎵 Audio Model: Enter your audio deployment name (e.g., gpt-4o-mini-audio-preview)"
+              azd env set dAudioModelName $audioModel
+              Write-Host "✓ Set audio model: $audioModel" -ForegroundColor Green
+          }
+          
+          Write-Host ""
+          Write-Host "✅ Parameters configured:" -ForegroundColor Green
+          Write-Host "   Setup: $setupChoice" -ForegroundColor Cyan
+          Write-Host "   Endpoint: $foundryEndpoint" -ForegroundColor Cyan
+          Write-Host "   Chat Model: $chatModel" -ForegroundColor Cyan  
+          Write-Host "   Audio Model: $audioModel" -ForegroundColor Cyan
+          Write-Host ""
+      } else {
+          # Collect model names for new deployments
+          $chatModel = $null
+          $audioModel = $null
+          
+          $output = azd env get-value cChatModelName 2>&1
+          if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrEmpty($output) -and -not $output.ToString().Contains("ERROR")) {
+              $chatModel = $output.ToString().Trim()
+              Write-Host "✓ Found existing chat model config: $chatModel" -ForegroundColor Green
+          } else {
+              $chatModel = Read-Host "💬 Chat Model: Enter model to deploy [gpt-4o-mini/gpt-4o/gpt-35-turbo]"
+              if ([string]::IsNullOrEmpty($chatModel)) {
+                  Write-Host "❌ Chat model name is required" -ForegroundColor Red
+                  exit 1
+              }
+              azd env set cChatModelName $chatModel
+              Write-Host "✓ Set chat model: $chatModel" -ForegroundColor Green
+          }
+          
+          $output = azd env get-value dAudioModelName 2>&1
+          if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrEmpty($output) -and -not $output.ToString().Contains("ERROR")) {
+              $audioModel = $output.ToString().Trim()
+              Write-Host "✓ Found existing audio model config: $audioModel" -ForegroundColor Green
+          } else {
+              $audioModel = Read-Host "🎵 Audio Model: Enter audio model to deploy [gpt-4o-mini-audio-preview/gpt-4o-audio-preview]"
+              if ([string]::IsNullOrEmpty($audioModel)) {
+                  Write-Host "❌ Audio model name is required" -ForegroundColor Red
+                  exit 1
+              }
+              azd env set dAudioModelName $audioModel
+              Write-Host "✓ Set audio model: $audioModel" -ForegroundColor Green
+          }
+          
+          Write-Host ""
+          Write-Host "✅ New deployment parameters configured:" -ForegroundColor Green
+          Write-Host "   Setup: $setupChoice" -ForegroundColor Cyan
+          Write-Host "   Chat Model: $chatModel" -ForegroundColor Cyan  
+          Write-Host "   Audio Model: $audioModel" -ForegroundColor Cyan
+          Write-Host ""
+      }
+      
+      # Collect AI location for new deployments (for regional model availability)
+      if ($setupChoice -eq "new") {
+          $aiLocation = $null
+          $output = azd env get-value eAILocation 2>&1
+          if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrEmpty($output) -and -not $output.ToString().Contains("ERROR")) {
+              $aiLocation = $output.ToString().Trim()
+              Write-Host "✓ Found existing AI location: $aiLocation" -ForegroundColor Green
+          } else {
+              Write-Host "📍 AI Location: Choose region that supports your selected chat and audio models" -ForegroundColor Cyan
+              Write-Host "   Validated regions: eastus, eastus2, swedencentral" -ForegroundColor Green
+              do {
+                  $aiLocation = Read-Host "🌍 AI Region [eastus] (eastus/eastus2/swedencentral)"
+                  if ([string]::IsNullOrEmpty($aiLocation)) {
+                      $aiLocation = "eastus"
+                  }
+                  $aiLocation = $aiLocation.ToLower().Trim()
+                  $supportedRegions = @("eastus", "eastus2", "swedencentral")
+                  if ($aiLocation -notin $supportedRegions) {
+                      Write-Host "Please choose eastus, eastus2, or swedencentral - these regions support both models" -ForegroundColor Yellow
+                  }
+              } while ($aiLocation -notin $supportedRegions)
+              azd env set eAILocation $aiLocation
+              Write-Host "✓ Set AI location: $aiLocation" -ForegroundColor Green
+          }
+      }
+      
+  postprovision:
+    shell: pwsh
+    interactive: false
+    run: |
+      # Automated RBAC setup for existing AI Foundry (runs after infrastructure is deployed)
+      try {
+          $setupChoice = azd env get-value aSetupChoice
+          Write-Host "🔐 RBAC Setup - Setup Choice: $setupChoice" -ForegroundColor Cyan
+          
+          if ($setupChoice -eq "existing") {
+              Write-Host "🔐 Setting up RBAC for existing AI Foundry..." -ForegroundColor Cyan
+              
+              # Get required values
+              $principalId = azd env get-value SERVICE_API_IDENTITY_PRINCIPAL_ID
+              $foundryEndpoint = azd env get-value bFoundryEndpoint
+              $aiSubscriptionId = "1b147013-4b92-4753-90d0-35bafcd3e4c8"
+              $aiResourceGroup = "niteshjain_aifoundary_rg"
+              
+              # Extract AI service name from endpoint
+              $baseEndpoint = $foundryEndpoint -replace '/models', ''
+              $aiServiceName = ($baseEndpoint -split '://')[1] -split '\.' | Select-Object -First 1
+              
+              # Construct resource scope
+              $scope = "/subscriptions/$aiSubscriptionId/resourceGroups/$aiResourceGroup/providers/Microsoft.CognitiveServices/accounts/$aiServiceName"
+              
+              Write-Host "   Principal: $principalId" -ForegroundColor Green
+              Write-Host "   Scope: $scope" -ForegroundColor Green
+              
+              # Check if role assignment exists
+              $existing = az role assignment list --assignee $principalId --scope $scope --role "Cognitive Services OpenAI User" --query "length(@)" --output tsv
+              
+              if ($existing -eq "0") {
+                  Write-Host "   Creating role assignment..." -ForegroundColor Yellow
+                  az role assignment create --role "Cognitive Services OpenAI User" --assignee $principalId --scope $scope --output none
+                  Write-Host "   ✅ Role assignment created successfully" -ForegroundColor Green
+              } else {
+                  Write-Host "   ✅ Role assignment already exists" -ForegroundColor Green
+              }
+          } else {
+              Write-Host "🔐 Skipping RBAC setup (not using existing AI Foundry)" -ForegroundColor Gray
+          }
+      } catch {
+          Write-Host "⚠️ RBAC setup failed: $($_.Exception.Message)" -ForegroundColor Yellow
+          Write-Host "You can manually create the role assignment later if needed." -ForegroundColor Gray
+      }
+      
+      # Conditional parameter collection based on setup choice
+      $configPath = ".azure/$env:AZURE_ENV_NAME/config.json"
+      
+      if (Test-Path $configPath) {
+          $config = Get-Content $configPath | ConvertFrom-Json
+          
+          # Ensure infra.parameters exists
+          if (-not $config.infra) {
+              $config | Add-Member -MemberType NoteProperty -Name "infra" -Value ([PSCustomObject]@{}) -Force
+          }
+          if (-not $config.infra.parameters) {
+              $config.infra | Add-Member -MemberType NoteProperty -Name "parameters" -Value ([PSCustomObject]@{}) -Force
+          }
+          
+          # Generate Bicep parameters file using azd environment variables (set in preprovision hook)
+          $setupChoice = azd env get-value aSetupChoice
+          Write-Host "🔧 Generating Bicep parameters from azd environment..." -ForegroundColor Cyan
+          Write-Host "   Setup Choice: $setupChoice" -ForegroundColor Gray
+          
+          if ($setupChoice -eq "existing") {
+              $endpoint = azd env get-value bFoundryEndpoint
+              $chatModel = azd env get-value cChatModelName
+              $audioModel = azd env get-value dAudioModelName
+              
+              # Extract AI resource name and find resource group automatically
+              Write-Host "🔍 Looking up AI resource details from endpoint..." -ForegroundColor Yellow
+              $baseEndpoint = $endpoint -replace "/models$", ""
+              $aiResourceName = ($baseEndpoint -split "://")[1] -split "\." | Select-Object -First 1
+              
+              try {
+                  # Find the AI resource across all accessible resource groups
+                  $aiResource = az cognitiveservices account list --query "[?name=='$aiResourceName']" | ConvertFrom-Json | Select-Object -First 1
+                  
+                  if ($aiResource) {
+                      $aiResourceGroup = $aiResource.resourceGroup
+                      $aiSubscription = $aiResource.id -split "/" | Select-Object -Index 2
+                      
+                      Write-Host "✅ Found AI resource:" -ForegroundColor Green
+                      Write-Host "   Name: $aiResourceName" -ForegroundColor Gray
+                      Write-Host "   Resource Group: $aiResourceGroup" -ForegroundColor Gray
+                      Write-Host "   Subscription: $aiSubscription" -ForegroundColor Gray
+                  } else {
+                      Write-Host "⚠️  Could not find AI resource '$aiResourceName'. Using fallback values." -ForegroundColor Yellow
+                      $aiResourceGroup = "niteshjain_aifoundary_rg"
+                      $aiSubscription = "1b147013-4b92-4753-90d0-35bafcd3e4c8"
+                  }
+              } catch {
+                  Write-Host "⚠️  Error looking up AI resource. Using fallback values." -ForegroundColor Yellow
+                  $aiResourceGroup = "niteshjain_aifoundary_rg"
+                  $aiSubscription = "1b147013-4b92-4753-90d0-35bafcd3e4c8"
+              }
+              
+              # Create Bicep parameters file (Pattern B)
+              $bicepParamContent = "using './main.bicep'`n`nparam aSetupChoice = '$setupChoice'`nparam bFoundryEndpoint = '$endpoint'`nparam cChatModelName = '$chatModel'`nparam dAudioModelName = '$audioModel'`nparam eAISubscriptionId = '$aiSubscription'`nparam fAIResourceGroup = '$aiResourceGroup'"
+              Set-Content -Path "infra/main.bicepparam" -Value $bicepParamContent
+              
+              Write-Host "✅ Parameters configured:" -ForegroundColor Green
+              Write-Host "   Setup: $setupChoice" -ForegroundColor Gray
+              Write-Host "   Endpoint: $endpoint" -ForegroundColor Gray
+              Write-Host "   Chat Model: $chatModel" -ForegroundColor Gray
+              Write-Host "   Audio Model: $audioModel" -ForegroundColor Gray
+              Write-Host "   📄 Created infra/main.bicepparam" -ForegroundColor Cyan
+              
+          } else {
+              $chatModel = azd env get-value cChatModelName
+              $audioModel = azd env get-value dAudioModelName
+              $aiLocation = azd env get-value eAILocation
+              
+              # Create Bicep parameters file (Pattern B)
+              $bicepParamContent = "using './main.bicep'`n`nparam aSetupChoice = '$setupChoice'`nparam aiLocation = '$aiLocation'`nparam bFoundryEndpoint = ''`nparam cChatModelName = '$chatModel'`nparam dAudioModelName = '$audioModel'`nparam chatModelName = '$chatModel'`nparam audioModelName = '$audioModel'"
+              Set-Content -Path "infra/main.bicepparam" -Value $bicepParamContent
+              
+              Write-Host "✅ New deployment parameters configured:" -ForegroundColor Green
+              Write-Host "   Setup: $setupChoice" -ForegroundColor Gray
+              Write-Host "   AI Location: $aiLocation" -ForegroundColor Gray
+              Write-Host "   Chat Model: $chatModel" -ForegroundColor Gray
+              Write-Host "   Audio Model: $audioModel" -ForegroundColor Gray
+              Write-Host "   📄 Created infra/main.bicepparam" -ForegroundColor Cyan
+          }
+      }
+      
+  postdeploy:
+    shell: pwsh
+    run: |
+      Write-Host "==============================" -ForegroundColor Cyan
+      Write-Host "🚀 Deployment completed successfully!" -ForegroundColor Green
+      
+      $setupChoice = azd env get-value aSetupChoice
+      if ($setupChoice -eq "existing") {
+        Write-Host "✅ Using existing Azure AI Foundry endpoint" -ForegroundColor Yellow
+        Write-Host "✅ RBAC permissions configured automatically via Bicep deployment script" -ForegroundColor Green
+      } else {
+        Write-Host "✅ New Azure AI services provisioned" -ForegroundColor Green
+        
+        # For new deployments, update app service settings with the newly created AI endpoints
+        try {
+          Write-Host "🔧 Updating App Service with new AI endpoints..." -ForegroundColor Cyan
+          
+          $appName = azd env get-value SERVICE_API_NAME
+          $resourceGroup = azd env get-value AZURE_RESOURCE_GROUP
+          
+          # Get AI resource information from the deployment
+          Write-Host "   Getting AI resource information..." -ForegroundColor Gray
+          
+          # Query for the newly created AI service
+          $aiServices = az cognitiveservices account list --resource-group $resourceGroup --query "[?kind=='AIServices']" | ConvertFrom-Json
+          
+          if ($aiServices -and $aiServices.Count -gt 0) {
+              $aiService = $aiServices[0]
+              $aiEndpoint = "$($aiService.properties.endpoint)models"
+              $aiResourceId = $aiService.id
+              
+              Write-Host "   AI Service: $($aiService.name)" -ForegroundColor Green
+              Write-Host "   Endpoint: $aiEndpoint" -ForegroundColor Green
+              
+              # Update app service settings
+              az webapp config appsettings set --name $appName --resource-group $resourceGroup --settings "AZURE_EXISTING_AIPROJECT_RESOURCE_ID=$aiResourceId" "EXISTING_AI_FOUNDRY_ENDPOINT=$aiEndpoint" "AZURE_INFERENCE_ENDPOINT=$aiEndpoint" --output none
+              
+              Write-Host "✅ App Service settings updated with new AI endpoints" -ForegroundColor Green
+          } else {
+              Write-Host "⚠️  Could not find newly created AI service - settings may need manual update" -ForegroundColor Yellow
+          }
+        } catch {
+          Write-Host "⚠️  Failed to update app service settings: $($_.Exception.Message)" -ForegroundColor Yellow
+          Write-Host "   You can update the settings manually in the Azure portal" -ForegroundColor Gray
+        }
+      }
+      
+      $serviceUri = azd env get-value SERVICE_API_URI
+      Write-Host ""
+      Write-Host "🌐 Application URL: $serviceUri" -ForegroundColor Cyan
+      Write-Host "🔧 Visit the settings page to configure additional options" -ForegroundColor Gray

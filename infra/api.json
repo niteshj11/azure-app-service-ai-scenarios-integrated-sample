@@ -1,0 +1,453 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.38.33.27573",
+      "templateHash": "8157668455718573891"
+    }
+  },
+  "parameters": {
+    "name": {
+      "type": "string"
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]"
+    },
+    "tags": {
+      "type": "object",
+      "defaultValue": {}
+    },
+    "appServicePlanId": {
+      "type": "string"
+    },
+    "enableManagedIdentity": {
+      "type": "bool",
+      "defaultValue": false
+    },
+    "enableAIServices": {
+      "type": "bool",
+      "defaultValue": false
+    },
+    "aiFoundryEndpoint": {
+      "type": "string",
+      "defaultValue": ""
+    },
+    "chatDeploymentName": {
+      "type": "string",
+      "defaultValue": ""
+    },
+    "audioDeploymentName": {
+      "type": "string",
+      "defaultValue": ""
+    }
+  },
+  "variables": {
+    "baseEnv": [
+      {
+        "name": "FLASK_APP",
+        "value": "app.py"
+      },
+      {
+        "name": "FLASK_ENV",
+        "value": "production"
+      },
+      {
+        "name": "PYTHONUNBUFFERED",
+        "value": "1"
+      },
+      {
+        "name": "WEBSITE_WEBDEPLOY_USE_SCM",
+        "value": "true"
+      },
+      {
+        "name": "PYTHONPATH",
+        "value": "/home/site/wwwroot"
+      },
+      {
+        "name": "WEBSITES_ENABLE_APP_SERVICE_STORAGE",
+        "value": "false"
+      },
+      {
+        "name": "SCM_DO_BUILD_DURING_DEPLOYMENT",
+        "value": "true"
+      },
+      {
+        "name": "ENABLE_ORYX_BUILD",
+        "value": "true"
+      }
+    ],
+    "infrastructureEnv": [],
+    "hasAIConfig": "[or(parameters('enableAIServices'), or(not(empty(parameters('aiFoundryEndpoint'))), not(empty(parameters('chatDeploymentName')))))]",
+    "aiEnv": "[if(variables('hasAIConfig'), createArray(createObject('name', 'AZURE_INFERENCE_ENDPOINT', 'value', parameters('aiFoundryEndpoint')), createObject('name', 'AZURE_CLIENT_ID', 'value', 'system-assigned-managed-identity'), createObject('name', 'AZURE_AI_CHAT_DEPLOYMENT_NAME', 'value', parameters('chatDeploymentName')), createObject('name', 'AZURE_AI_AUDIO_DEPLOYMENT_NAME', 'value', parameters('audioDeploymentName'))), createArray())]",
+    "env": "[concat(concat(variables('baseEnv'), variables('aiEnv')), variables('infrastructureEnv'))]",
+    "appSettings": "[reduce(variables('env'), createObject(), lambda('acc', 'curr', union(lambdaVariables('acc'), createObject(format('{0}', lambdaVariables('curr').name), lambdaVariables('curr').value))))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "appservice",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "name": {
+            "value": "[parameters('name')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "tags": {
+            "value": "[parameters('tags')]"
+          },
+          "appServicePlanId": {
+            "value": "[parameters('appServicePlanId')]"
+          },
+          "runtimeName": {
+            "value": "python"
+          },
+          "runtimeVersion": {
+            "value": "3.11"
+          },
+          "appCommandLine": {
+            "value": "gunicorn --bind=0.0.0.0:8000 --workers=1 --timeout=600 --preload wsgi:app"
+          },
+          "managedIdentity": {
+            "value": "[parameters('enableManagedIdentity')]"
+          },
+          "allowedOrigins": {
+            "value": [
+              "https://portal.azure.com",
+              "https://ms.portal.azure.com",
+              "https://ai.azure.com"
+            ]
+          },
+          "appSettings": {
+            "value": "[variables('appSettings')]"
+          },
+          "scmDoBuildDuringDeployment": {
+            "value": true
+          },
+          "enableOryxBuild": {
+            "value": true
+          },
+          "linuxFxVersion": {
+            "value": "PYTHON|3.11"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.38.33.27573",
+              "templateHash": "13421784193254680722"
+            },
+            "description": "Creates an Azure App Service in an existing Azure App Service plan."
+          },
+          "parameters": {
+            "name": {
+              "type": "string"
+            },
+            "location": {
+              "type": "string",
+              "defaultValue": "[resourceGroup().location]"
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {}
+            },
+            "appServicePlanId": {
+              "type": "string"
+            },
+            "managedIdentity": {
+              "type": "bool",
+              "defaultValue": true
+            },
+            "runtimeName": {
+              "type": "string",
+              "allowedValues": [
+                "dotnet",
+                "dotnetcore",
+                "dotnet-isolated",
+                "node",
+                "python",
+                "java",
+                "powershell",
+                "custom"
+              ]
+            },
+            "runtimeNameAndVersion": {
+              "type": "string",
+              "defaultValue": "[format('{0}|{1}', parameters('runtimeName'), parameters('runtimeVersion'))]"
+            },
+            "runtimeVersion": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string",
+              "defaultValue": "app,linux"
+            },
+            "allowedOrigins": {
+              "type": "array",
+              "defaultValue": []
+            },
+            "alwaysOn": {
+              "type": "bool",
+              "defaultValue": false
+            },
+            "appCommandLine": {
+              "type": "string",
+              "defaultValue": ""
+            },
+            "appSettings": {
+              "type": "secureObject",
+              "defaultValue": {}
+            },
+            "clientAffinityEnabled": {
+              "type": "bool",
+              "defaultValue": false
+            },
+            "enableOryxBuild": {
+              "type": "bool",
+              "defaultValue": "[contains(parameters('kind'), 'linux')]"
+            },
+            "functionAppScaleLimit": {
+              "type": "int",
+              "defaultValue": -1
+            },
+            "linuxFxVersion": {
+              "type": "string",
+              "defaultValue": "[parameters('runtimeNameAndVersion')]"
+            },
+            "minimumElasticInstanceCount": {
+              "type": "int",
+              "defaultValue": -1
+            },
+            "numberOfWorkers": {
+              "type": "int",
+              "defaultValue": -1
+            },
+            "scmDoBuildDuringDeployment": {
+              "type": "bool",
+              "defaultValue": false
+            },
+            "use32BitWorkerProcess": {
+              "type": "bool",
+              "defaultValue": true
+            },
+            "ftpsState": {
+              "type": "string",
+              "defaultValue": "FtpsOnly"
+            },
+            "healthCheckPath": {
+              "type": "string",
+              "defaultValue": ""
+            }
+          },
+          "variables": {
+            "baseAppSettings": "[union(parameters('appSettings'), createObject('SCM_DO_BUILD_DURING_DEPLOYMENT', string(parameters('scmDoBuildDuringDeployment')), 'ENABLE_ORYX_BUILD', string(parameters('enableOryxBuild'))))]",
+            "pythonAppSettings": "[if(and(equals(parameters('runtimeName'), 'python'), equals(parameters('appCommandLine'), '')), createObject('PYTHON_ENABLE_GUNICORN_MULTIWORKERS', 'true'), createObject())]"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Web/sites/basicPublishingCredentialsPolicies",
+              "apiVersion": "2022-09-01",
+              "name": "[format('{0}/{1}', parameters('name'), 'ftp')]",
+              "properties": {
+                "allow": false
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/sites', parameters('name'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Web/sites/basicPublishingCredentialsPolicies",
+              "apiVersion": "2022-09-01",
+              "name": "[format('{0}/{1}', parameters('name'), 'scm')]",
+              "properties": {
+                "allow": false
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/sites', parameters('name'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Web/sites",
+              "apiVersion": "2022-09-01",
+              "name": "[parameters('name')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "kind": "[parameters('kind')]",
+              "properties": {
+                "serverFarmId": "[parameters('appServicePlanId')]",
+                "siteConfig": {
+                  "linuxFxVersion": "[parameters('linuxFxVersion')]",
+                  "alwaysOn": "[parameters('alwaysOn')]",
+                  "ftpsState": "[parameters('ftpsState')]",
+                  "minTlsVersion": "1.2",
+                  "appCommandLine": "[parameters('appCommandLine')]",
+                  "numberOfWorkers": "[if(not(equals(parameters('numberOfWorkers'), -1)), parameters('numberOfWorkers'), null())]",
+                  "minimumElasticInstanceCount": "[if(not(equals(parameters('minimumElasticInstanceCount'), -1)), parameters('minimumElasticInstanceCount'), null())]",
+                  "use32BitWorkerProcess": "[parameters('use32BitWorkerProcess')]",
+                  "functionAppScaleLimit": "[if(not(equals(parameters('functionAppScaleLimit'), -1)), parameters('functionAppScaleLimit'), null())]",
+                  "healthCheckPath": "[parameters('healthCheckPath')]",
+                  "cors": {
+                    "allowedOrigins": "[union(createArray('https://portal.azure.com', 'https://ms.portal.azure.com'), parameters('allowedOrigins'))]"
+                  }
+                },
+                "clientAffinityEnabled": "[parameters('clientAffinityEnabled')]",
+                "httpsOnly": true
+              },
+              "identity": {
+                "type": "[if(parameters('managedIdentity'), 'SystemAssigned', 'None')]"
+              }
+            },
+            {
+              "type": "Microsoft.Web/sites/config",
+              "apiVersion": "2022-09-01",
+              "name": "[format('{0}/{1}', parameters('name'), 'logs')]",
+              "properties": {
+                "applicationLogs": {
+                  "fileSystem": {
+                    "level": "Verbose"
+                  }
+                },
+                "detailedErrorMessages": {
+                  "enabled": true
+                },
+                "failedRequestsTracing": {
+                  "enabled": true
+                },
+                "httpLogs": {
+                  "fileSystem": {
+                    "enabled": true,
+                    "retentionInDays": 1,
+                    "retentionInMb": 35
+                  }
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/sites', parameters('name'))]",
+                "[resourceId('Microsoft.Resources/deployments', format('{0}-appSettings', parameters('name')))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Resources/deployments",
+              "apiVersion": "2025-04-01",
+              "name": "[format('{0}-appSettings', parameters('name'))]",
+              "properties": {
+                "expressionEvaluationOptions": {
+                  "scope": "inner"
+                },
+                "mode": "Incremental",
+                "parameters": {
+                  "name": {
+                    "value": "[parameters('name')]"
+                  },
+                  "appSettings": {
+                    "value": "[union(variables('baseAppSettings'), variables('pythonAppSettings'))]"
+                  }
+                },
+                "template": {
+                  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                  "contentVersion": "1.0.0.0",
+                  "metadata": {
+                    "_generator": {
+                      "name": "bicep",
+                      "version": "0.38.33.27573",
+                      "templateHash": "16818702544742325324"
+                    },
+                    "description": "Updates app settings for an Azure App Service."
+                  },
+                  "parameters": {
+                    "name": {
+                      "type": "string",
+                      "metadata": {
+                        "description": "The name of the app service resource within the current resource group scope"
+                      }
+                    },
+                    "appSettings": {
+                      "type": "secureObject",
+                      "metadata": {
+                        "description": "The app settings to be applied to the app service"
+                      }
+                    }
+                  },
+                  "resources": [
+                    {
+                      "type": "Microsoft.Web/sites/config",
+                      "apiVersion": "2022-09-01",
+                      "name": "[format('{0}/{1}', parameters('name'), 'appsettings')]",
+                      "properties": "[parameters('appSettings')]"
+                    }
+                  ]
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/sites', parameters('name'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "identityPrincipalId": {
+              "type": "string",
+              "value": "[if(parameters('managedIdentity'), reference(resourceId('Microsoft.Web/sites', parameters('name')), '2022-09-01', 'full').identity.principalId, '')]"
+            },
+            "name": {
+              "type": "string",
+              "value": "[parameters('name')]"
+            },
+            "uri": {
+              "type": "string",
+              "value": "[format('https://{0}', reference(resourceId('Microsoft.Web/sites', parameters('name')), '2022-09-01').defaultHostName)]"
+            }
+          }
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "DEBUG_API": {
+      "type": "object",
+      "value": {
+        "enableManagedIdentity": "[parameters('enableManagedIdentity')]",
+        "identityPrincipalIdLength": "[if(parameters('enableManagedIdentity'), length(reference(resourceId('Microsoft.Resources/deployments', 'appservice'), '2025-04-01').outputs.identityPrincipalId.value), 0)]",
+        "enableAIServices": "[parameters('enableAIServices')]",
+        "hasAIConfig": "[variables('hasAIConfig')]",
+        "aiFoundryEndpoint": "[parameters('aiFoundryEndpoint')]",
+        "chatDeploymentName": "[parameters('chatDeploymentName')]",
+        "audioDeploymentName": "[parameters('audioDeploymentName')]",
+        "receivedParameters": {
+          "aiFoundryEndpoint": "[parameters('aiFoundryEndpoint')]",
+          "chatDeploymentName": "[parameters('chatDeploymentName')]",
+          "audioDeploymentName": "[parameters('audioDeploymentName')]"
+        }
+      }
+    },
+    "SERVICE_API_IDENTITY_PRINCIPAL_ID": {
+      "type": "string",
+      "value": "[if(parameters('enableManagedIdentity'), reference(resourceId('Microsoft.Resources/deployments', 'appservice'), '2025-04-01').outputs.identityPrincipalId.value, '')]"
+    },
+    "SERVICE_API_NAME": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'appservice'), '2025-04-01').outputs.name.value]"
+    },
+    "SERVICE_API_URI": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'appservice'), '2025-04-01').outputs.uri.value]"
+    },
+    "SERVICE_API_ENDPOINTS": {
+      "type": "array",
+      "value": [
+        "[reference(resourceId('Microsoft.Resources/deployments', 'appservice'), '2025-04-01').outputs.uri.value]"
+      ]
+    }
+  }
+}

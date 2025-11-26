@@ -1,6 +1,6 @@
 {
-  "endpoint": "https://your-endpoint.services.ai.azure.com/models",
-  "api_key": "your-azure-ai-foundry-api-key",
+  "endpoint": "",
+  "api_key": "",
   "api_version": "2024-02-15-preview",
   "model": "",
   "audio_model": "",
@@ -20,12 +20,12 @@
   "response_format": "text",
   "json_schema": "",
   "schema_name": "Response",
-  "secret_key": "change-this-in-production",
+  "secret_key": "azure-production-key-change-me",
   "debug": false,
   "host": "0.0.0.0",
-  "port": 5000,
+  "port": 8000,
   "max_content_length": 52428800,
-  "upload_folder": "uploads",
+  "upload_folder": "AIPlaygroundCode/uploads",
   "session_timeout": 3600,
   "log_level": "INFO"
 }

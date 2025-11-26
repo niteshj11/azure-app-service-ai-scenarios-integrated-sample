@@ -296,7 +296,7 @@
                     <input type="url" 
                            id="endpoint" 
                            name="endpoint" 
-                           value="{{ config.endpoint }}" 
+                           value="{{ config.display_endpoint }}" 
                            placeholder="https://your-endpoint.services.ai.azure.com/models"
                            required>
                     <div class="help-text">
@@ -305,16 +305,33 @@
                 </div>
                 
                 <div class="form-group">
+                    {% if use_managed_identity %}
+                    <label for="api_key">API Key <span style="color: #28a745; font-weight: bold;">(Managed Identity Enabled)</span></label>
+                    <input type="password" 
+                           id="api_key" 
+                           name="api_key" 
+                           value="{{ config.display_api_key }}" 
+                           placeholder="Not required - Using Managed Identity"
+                           disabled
+                           style="background-color: #e8f5e8; border-color: #28a745;">
+                    <div class="help-text" style="color: #28a745;">
+                        <strong>✅ Managed Identity is enabled</strong> - API key authentication is not required. 
+                        The app will automatically authenticate using Azure's system-assigned managed identity for secure, keyless authentication.
+                    </div>
+                    {% else %}
                     <label for="api_key">API Key *</label>
                     <input type="password" 
                            id="api_key" 
                            name="api_key" 
-                           value="{{ config.api_key }}" 
+                           value="{{ config.display_api_key }}" 
                            placeholder="Your Azure AI Foundry API key"
+                           {% if config.is_api_key_disabled %}disabled{% endif %}
                            required>
                     <div class="help-text">
                         Your Azure AI Foundry API key. Keep this secure and never share it publicly.
+                        <br><em>💡 For production deployments, consider using Managed Identity instead of API keys for enhanced security.</em>
                     </div>
+                    {% endif %}
                 </div>
                 
                 <div class="form-row">
@@ -323,7 +340,7 @@
                         <input type="text" 
                                id="model" 
                                name="model" 
-                               value="{{ config.model }}" 
+                               value="{{ config.display_model }}" 
                                placeholder="gpt-4o-mini"
                                required>
                         <div class="help-text">
@@ -336,7 +353,7 @@
                         <input type="text" 
                                id="audio_model" 
                                name="audio_model" 
-                               value="{{ config.audio_model }}" 
+                               value="{{ config.display_audio_model }}" 
                                placeholder="gpt-4o-mini-audio-preview">
                         <div class="help-text">
                             The model deployment name for audio processing and transcription
@@ -629,9 +646,14 @@
             // Validate required fields before testing
             const endpoint = document.getElementById('endpoint').value.trim();
             const apiKey = document.getElementById('api_key').value.trim();
+            const isApiKeyDisabled = document.getElementById('api_key').disabled;
             
-            if (!endpoint || !apiKey) {
-                alert('❌ Please fill in both Azure endpoint and API key before testing the configuration.');
+            // For managed identity, we don't need to validate API key
+            if (!endpoint || (!isApiKeyDisabled && !apiKey)) {
+                const missingFields = [];
+                if (!endpoint) missingFields.push('endpoint');
+                if (!isApiKeyDisabled && !apiKey) missingFields.push('API key');
+                alert(`❌ Please fill in the ${missingFields.join(' and ')} before testing the configuration.`);
                 return;
             }
             
@@ -665,9 +687,18 @@
         function validateForm() {
             const endpoint = document.getElementById('endpoint').value.trim();
             const apiKey = document.getElementById('api_key').value.trim();
+            const isApiKeyDisabled = document.getElementById('api_key').disabled;
+            const useManagedIdentity = {{ 'true' if use_managed_identity else 'false' }};
             
-            if (!endpoint || !apiKey) {
-                alert('❌ Azure endpoint and API key are required for the chatbot to function.');
+            // Check required fields based on authentication mode
+            if (!endpoint) {
+                alert('❌ Azure endpoint is required for the chatbot to function.');
+                return false;
+            }
+            
+            // API key is only required when NOT using Managed Identity
+            if (!useManagedIdentity && !isApiKeyDisabled && !apiKey) {
+                alert('❌ API key is required when not using Managed Identity. Please enter your API key or configure Managed Identity authentication.');
                 return false;
             }
             

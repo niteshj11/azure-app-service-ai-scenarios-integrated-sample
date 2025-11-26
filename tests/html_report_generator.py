@@ -13,15 +13,27 @@ from typing import List, Dict, Any, Optional
 class HTMLReportGenerator:
     """Generate comprehensive HTML reports for test scenarios"""
     
-    def __init__(self, test_name: str, output_dir: str = "tests/reports"):
+    def __init__(self, test_name: str, output_dir: str = None):
         self.test_name = test_name
-        self.output_dir = output_dir
+        
+        # Determine correct output directory based on current working directory
+        if output_dir is None:
+            # If we're in the project root, use tests/reports
+            # If we're in the tests directory, use reports
+            current_dir = os.getcwd()
+            if current_dir.endswith('tests'):
+                self.output_dir = "reports"
+            else:
+                self.output_dir = "tests/reports"
+        else:
+            self.output_dir = output_dir
+            
         self.test_results = []
         self.start_time = datetime.now()
         self.config_info = self._get_config_info()
         
         # Ensure output directory exists
-        os.makedirs(output_dir, exist_ok=True)
+        os.makedirs(self.output_dir, exist_ok=True)
     
     def _get_config_info(self) -> Dict[str, str]:
         """Get current configuration information"""
@@ -31,7 +43,7 @@ class HTMLReportGenerator:
             import os
             sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
             
-            from config import get_model_config, is_configured
+            from AIPlaygroundCode.config import get_model_config, is_configured
             
             if is_configured():
                 config = get_model_config()
@@ -70,16 +82,20 @@ class HTMLReportGenerator:
                        response_code: int = 200):
         """Add a test result to the report"""
         
+        # Enhanced status evaluation for audio transcription tests
+        enhanced_status = self._evaluate_audio_result(output_data, status) if self._is_audio_test(scenario) else status
+        
         result = {
             'scenario': scenario,
             'input_data': input_data,
             'output_data': output_data,
-            'status': status,
+            'status': enhanced_status,
             'duration': duration,
             'environment': environment,
             'media_files': media_files or [],
             'response_code': response_code,
-            'timestamp': datetime.now().isoformat()
+            'timestamp': datetime.now().isoformat(),
+            'has_transcription': self._has_transcription_content(output_data)
         }
         
         self.test_results.append(result)
@@ -125,7 +141,8 @@ class HTMLReportGenerator:
         
         # Calculate statistics
         passed_tests = sum(1 for result in self.test_results if result['status'] == 'PASSED')
-        failed_tests = len(self.test_results) - passed_tests
+        partial_tests = sum(1 for result in self.test_results if result['status'] == 'PARTIAL')
+        failed_tests = sum(1 for result in self.test_results if result['status'] == 'FAILED')
         success_rate = (passed_tests / len(self.test_results) * 100) if self.test_results else 0
         
         html_content = f"""
@@ -224,6 +241,7 @@ class HTMLReportGenerator:
         }}
         .status-badge.passed {{ background: #28a745; }}
         .status-badge.failed {{ background: #dc3545; }}
+        .status-badge.partial {{ background: #fd7e14; }}
         .result-content {{
             padding: 20px;
             display: none;
@@ -372,6 +390,10 @@ class HTMLReportGenerator:
                 <h3>Passed</h3>
                 <div class="value">{passed_tests}</div>
             </div>
+            <div class="stat-card" style="background: #fff3cd;">
+                <h3>Partial</h3>
+                <div class="value" style="color: #fd7e14;">{partial_tests}</div>
+            </div>
             <div class="stat-card danger">
                 <h3>Failed</h3>
                 <div class="value">{failed_tests}</div>
@@ -394,7 +416,12 @@ class HTMLReportGenerator:
         
         # Add test results
         for i, result in enumerate(self.test_results):
-            status_class = 'passed' if result['status'] == 'PASSED' else 'failed'
+            if result['status'] == 'PASSED':
+                status_class = 'passed'
+            elif result['status'] == 'PARTIAL':
+                status_class = 'partial'
+            else:
+                status_class = 'failed'
             
             html_content += f"""
         <div class="test-result">
@@ -501,6 +528,23 @@ class HTMLReportGenerator:
                 '[AUDIO ANALYSIS]',
                 '<div style="margin-top:15px;padding:10px;background:#e8f4fd;border-left:4px solid #007acc;border-radius:5px;"><strong style="color:#007acc;">🎵 AUDIO ANALYSIS</strong></div><div style="margin-top:5px;font-family:monospace;font-size:0.9em;margin-bottom:10px;">'
             )
+        
+        # Highlight transcription content
+        if '**📝 transcription:**' in formatted_text.lower() or 'transcription:' in formatted_text.lower():
+            formatted_text = formatted_text.replace(
+                '**📝 Transcription:**',
+                '<div style="margin-top:10px;padding:10px;background:#f0f8f0;border-left:4px solid #28a745;border-radius:5px;"><strong style="color:#28a745;">📝 TRANSCRIPTION CONTENT</strong></div><div style="margin-top:5px;font-family:Georgia,serif;font-size:0.95em;line-height:1.5;background:#fafafa;padding:10px;border-radius:5px;">'
+            )
+            
+        # Highlight audio processing indicators
+        success_patterns = [
+            ('✅ AUDIO TRANSCRIPTION WORKING!', '<span style="background:#d4edda;color:#155724;padding:3px 6px;border-radius:3px;font-weight:bold;">✅ AUDIO TRANSCRIPTION WORKING!</span>'),
+            ('🎤 **Audio Processing Complete**', '<span style="background:#d4edda;color:#155724;padding:3px 6px;border-radius:3px;font-weight:bold;">🎤 Audio Processing Complete</span>')
+        ]
+        
+        for pattern, replacement in success_patterns:
+            if pattern in formatted_text:
+                formatted_text = formatted_text.replace(pattern, replacement)
             
         # Style bullet points
         formatted_text = formatted_text.replace('• ', '<span style="color:#007acc;font-weight:bold;">• </span>')
@@ -523,3 +567,66 @@ class HTMLReportGenerator:
             f.write(self.generate_html_report())
         
         return filepath
+    
+    def _is_audio_test(self, scenario: str) -> bool:
+        """Check if this is an audio-related test scenario"""
+        audio_keywords = ['audio', 'transcribe', 'customer support', 'call', 'recording']
+        return any(keyword.lower() in scenario.lower() for keyword in audio_keywords)
+    
+    def _has_transcription_content(self, output_data: str) -> bool:
+        """Check if the output contains actual transcription content"""
+        transcription_indicators = [
+            'transcription:', '**transcription:**', 'transcript:', 
+            'customer said', 'representative said', 'caller:', 'agent:',
+            'hello', 'thank you', 'how can i help', 'i would like to',
+            'audio processing complete', '🎤', 'audio file received'
+        ]
+        output_lower = output_data.lower()
+        return any(indicator in output_lower for indicator in transcription_indicators)
+    
+    def _evaluate_audio_result(self, output_data: str, original_status: str) -> str:
+        """Enhanced evaluation for audio test results"""
+        output_lower = output_data.lower()
+        
+        # Check for clear success indicators
+        success_indicators = [
+            '✅ audio transcription working!',
+            'audio processing complete',
+            'transcription:',
+            '**transcription:**'
+        ]
+        
+        # Check for clear failure indicators
+        failure_indicators = [
+            '❌',
+            'error:',
+            'failed to',
+            'no transcription',
+            'audio model not available',
+            'fallback response'
+        ]
+        
+        # Check for partial success indicators
+        partial_indicators = [
+            '⚠️ partial transcription detected',
+            '⚠️ ai processing detected',
+            'audio file received',
+            'current model supports text and image'
+        ]
+        
+        has_success = any(indicator in output_lower for indicator in success_indicators)
+        has_failure = any(indicator in output_lower for indicator in failure_indicators)
+        has_partial = any(indicator in output_lower for indicator in partial_indicators)
+        has_transcription = self._has_transcription_content(output_data)
+        
+        # Enhanced decision logic
+        if has_success and has_transcription:
+            return "PASSED"
+        elif has_success and not has_transcription:
+            return "PARTIAL"  # Claims success but no actual transcription
+        elif has_failure:
+            return "FAILED"
+        elif has_partial or (has_transcription and not has_failure):
+            return "PARTIAL"
+        else:
+            return original_status

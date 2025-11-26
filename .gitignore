@@ -1,3 +1,9 @@
+# AIPlaygroundCode exclusions - exclude development files but keep runtime essentials
+AIPlaygroundCode/__pycache__/
+AIPlaygroundCode/*.log
+AIPlaygroundCode/uploads/
+# settings.json, settings.local.json, and settings.json.template are all tracked in git
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -101,9 +107,9 @@ celerybeat.pid
 # SageMath parsed files
 *.sage.py
 
-# Environments
+# Environments - exclude entirely
 .env
-.venv
+.venv/
 env/
 venv/
 ENV/
@@ -128,12 +134,8 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# VS Code
+# VS Code - exclude entirely
 .vscode/
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
 *.code-workspace
 
 # Local environment files
@@ -157,30 +159,17 @@ debug_*.py
 quick_test_*.py
 simple_test.py
 
-# Upload directories (moved to AIPlaygroundCode)
-AIPlaygroundCode/uploads/
-
-# Configuration files with sensitive data 
-AIPlaygroundCode/settings.local.json
-# Note: settings.json in repo contains template values only
-
-# Template files (explicitly included)
-!AIPlaygroundCode/settings.json.template
-!AIPlaygroundCode/settings.local.json.template
-
-# Test output files and logs (moved to AIPlaygroundCode)
+# Test output files and logs
 azd-live-output.log
 azd-prompts-captured.txt
 tests/reports/
-AIPlaygroundCode/*.log
 cleanup_log.txt
 scripts/cleanup_log.txt
 
-# Azure deployment files
+# Azure deployment files - exclude entirely
 .azure/
 
 # Temporary files and folders for deletion
 to_be_deleted/
 
-# Development artifacts that shouldn't be published
-AIPlaygroundCode/settings.json
+# Documentation files are included in git for project documentation

@@ -9,8 +9,8 @@ This guide covers testing the TechMart AI Chatbot both locally and on Azure, wit
 # 1. Install dependencies
 pip install -r requirements.txt
 
-# 2. Configure Azure AI credentials  
-# Edit AIPlaygroundCode/settings.json with your Azure AI endpoint and API key
+# 2. Configure Azure AI Foundry credentials  
+# Edit AIPlaygroundCode/settings.json with your Azure AI Foundry endpoint and API key
 
 # 3. Start the application
 python app.py
@@ -63,13 +63,14 @@ azd deploy                          # Deploy to existing Azure environment
 
 **Deployment Results:**
 - **Azure URL**: `https://[your-app-name].azurewebsites.net/`
-- **Resources Created**: App Service, Key Vault, App Service Plan
+- **Resources Created**: App Service, Azure AI Foundry resources (if new), Managed Identity configuration
 - **Expected Time**: 3-5 minutes for complete deployment
 
 ### Manual Testing (Azure)
 1. **Open Azure URL** in browser (from azd deployment output)
-2. **Configure Azure AI** (if needed):
-   - Click Settings (⚙️) → Enter Azure AI credentials → Save & Test
+2. **Verify Azure AI Foundry Configuration** (automatic in most cases):
+   - Configuration is usually automatic via Managed Identity
+   - If needed: Click Settings (⚙️) → Verify Azure AI Foundry endpoint → Test Config
 3. **Test all scenarios** (same as local testing):
    - Basic chat functionality
    - File upload capabilities (📎 button)
@@ -330,16 +331,18 @@ If you see "Configuration Error" or need to set up Azure AI:
 **Symptoms**: "Configuration Error" message appears
 **Solutions**:
 1. Check `settings.json` file exists and has proper format
-2. Verify Azure AI credentials are correct
-3. Test Azure AI endpoint connectivity
+2. Verify Azure AI Foundry credentials are correct (for local) or Managed Identity permissions (for Azure)
+3. Test Azure AI Foundry endpoint connectivity
+4. For Azure: Verify `AZURE_INFERENCE_ENDPOINT` environment variable is set
 
 #### No AI Response
 **Symptoms**: Chat interface loads but bot doesn't respond
 **Solutions**:
 1. Check Flask terminal for error messages
-2. Verify Azure AI service is accessible
-3. Check API key permissions and quotas
-4. Review configuration settings
+2. Verify Azure AI Foundry service is accessible
+3. For local: Check API key permissions and quotas
+4. For Azure: Verify Managed Identity has proper roles (Cognitive Services OpenAI User, Azure AI Developer)
+5. Review configuration settings and model deployment status
 
 #### Image/Audio Upload Fails
 **Symptoms**: Multimodal features don't work
@@ -411,6 +414,7 @@ python tests/test_simple_chat.py popup local basic
 - ✅ HTML reports show green status indicators
 - ✅ Response times within acceptable limits
 - ✅ No HTTP errors or exceptions
+- ✅ For Azure: Managed Identity authentication working correctly
 
 ### Deployment Testing Success
 - ✅ `azd up` completes without unexpected prompts

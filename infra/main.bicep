@@ -5,64 +5,94 @@ param environmentName string = replace(resourceGroup().name, 'rg-', '')
 
 @minLength(1)
 @description('Primary location for all resources')
+@metadata({
+  azd: {
+    type: 'location'
+  }
+})
 param location string = resourceGroup().location
+
+@description('Location for AI services (must support required models like gpt-4o-mini)')
+param aiLocation string = 'swedencentral'  // Default to Sweden Central which supports both chat and audio models
 
 @description('Id of the user or app to assign application roles')
 param principalId string = ''
 
-// User Configuration Options
-@description('Enable Azure AI services and AI Foundry project')
-param enableAIServices bool = false
-@description('Enable Managed Identity for the App Service')
-param enableManagedIdentity bool = true
-@description('Enable Application Insights monitoring')
-param enableApplicationInsights bool = false
-@description('Enable Azure AI Search service')
-param enableSearchService bool = false
-@description('Enable Azure Key Vault for secure configuration storage')
-param enableKeyVault bool = true
+// User Configuration Options - Parameters populated by azd from environment variables
+// These are set by the preprovision hook in azure.yaml and passed via main.parameters.json
+@description('Choose: new (create AI services) or existing (use your AI Foundry project)')
+param aSetupChoice string = ''
 
-// Optional existing resources
-@description('Use this parameter to use an existing AI project resource ID')
-param azureExistingAIProjectResourceId string = ''
+@description('Your existing AI Foundry project endpoint URL (collected conditionally)')
+param bFoundryEndpoint string = ''
+
+@description('Your chat model deployment name (collected conditionally)')
+param cChatModelName string = ''
+
+@description('Your audio model deployment name (collected conditionally)')
+param dAudioModelName string = ''
+
+@description('AI Foundry subscription ID (automatically detected from endpoint)')
+param eAISubscriptionId string = ''
+
+@description('AI Foundry resource group name (automatically detected from endpoint)')
+param fAIResourceGroup string = ''
+
+// Optional Configuration - Strategic defaults (will not prompt unless overridden)  
+@description('Subscription ID where your existing AI Foundry project is located')
+param existingAISubscriptionId string = !empty(eAISubscriptionId) ? eAISubscriptionId : subscription().subscriptionId
+
+@description('Resource Group name where your existing AI Foundry project is located')
+param existingAIResourceGroupName string = !empty(fAIResourceGroup) ? fAIResourceGroup : resourceGroup().name
+
+
+
+@description('Enable Managed Identity for the App Service (required for Azure AI integration)')
+param enableManagedIdentity bool = true
+
+
+
+// Azure AI Search service archived - not used in current implementation
+
+// Key Vault functionality archived - using Managed Identity with environment variables
+
+// Computed values - Handle conditional parameters
+var shouldProvisionNewAI = aSetupChoice == 'new'
+var shouldUseExistingAI = aSetupChoice == 'existing' && !empty(bFoundryEndpoint)
+
+// Extract AI account name from endpoint URL and construct resource ID (only for existing AI)
+// User provides complete endpoint with /models, so we extract the base URL for account name
+var baseEndpointForName = shouldUseExistingAI ? replace(bFoundryEndpoint, '/models', '') : ''
+var aiAccountName = shouldUseExistingAI ? split(split(baseEndpointForName, '://')[1], '.')[0] : ''
+var computedAIResourceId = shouldUseExistingAI ? '/subscriptions/${existingAISubscriptionId}/resourceGroups/${existingAIResourceGroupName}/providers/Microsoft.CognitiveServices/accounts/${aiAccountName}' : ''
+
+// Model deployment names (no fallbacks - require explicit parameters)
+var effectiveChatModelName = shouldProvisionNewAI ? chatModelName : cChatModelName
+var effectiveAudioModelName = shouldProvisionNewAI ? audioModelName : dAudioModelName
 
 
 // Resource names (optional - will be generated if not provided)
-@description('The Azure AI Foundry Hub resource name. If omitted will be generated')
-param aiProjectName string = ''
-@description('The application insights resource name. If omitted will be generated')
-param applicationInsightsName string = ''
+// Application insights name parameter archived
 @description('The AI Services resource name. If omitted will be generated')
 param aiServicesName string = ''
-@description('The Azure Search resource name. If omitted will be generated')
-param searchServiceName string = ''
-@description('The search index name')
-param aiSearchIndexName string = 'techmart-index'
+// Search index name parameter archived
 @description('The Azure Storage Account resource name. If omitted will be generated')
 param storageAccountName string = ''
-@description('The log analytics workspace name. If omitted will be generated')
-param logAnalyticsWorkspaceName string = ''
 @description('The App Service plan name. If omitted will be generated')
 param appServicePlanName string = ''
-@description('The Key Vault name. If omitted will be generated as <projectname>-kv')
-param keyVaultName string = ''
+// Key Vault name parameter archived
 
-// External Azure AI credentials (for existing AI services)
-// Note: These will be configured by users via the settings page after deployment
-@description('External Azure AI endpoint URL (will be stored in Key Vault)')
+// Legacy parameters (kept for compatibility)
+@description('Legacy parameter - use aiFoundryMode instead')
 param externalAzureAIEndpoint string = ''
-@description('External Azure AI API key (will be stored in Key Vault)')
-@secure()
-param externalAzureAIApiKey string = ''
 
-// Chat completion model
+// Chat completion model - Strategic defaults for new AI deployments
 @description('Format of the chat model to deploy')
 @allowed(['Microsoft', 'OpenAI'])
 param chatModelFormat string = 'OpenAI'
-@description('Name of the chat model to deploy')
-param chatModelName string = 'gpt-4o-mini'
-@description('Name of the model deployment')
-param chatDeploymentName string = 'gpt-4o-mini'
+
+@description('Name of the chat model to deploy (use gpt-4o for vision support)')
+param chatModelName string = 'gpt-4o'
 
 @description('Version of the chat model to deploy')
 // See version availability in this table:
@@ -75,48 +105,41 @@ param chatDeploymentSku string = 'GlobalStandard'
 @description('Capacity of the chat deployment')
 // You can increase this, but capacity is limited per model/region, so you will get errors if you go over
 // https://learn.microsoft.com/en-us/azure/ai-services/openai/quotas-limits
-param chatDeploymentCapacity int = 30
+param chatDeploymentCapacity int = 100
 
-// Embedding model
-@description('Format of the embedding model to deploy')
+// Audio model - Strategic defaults for new AI deployments
+@description('Format of the audio model to deploy')
 @allowed(['Microsoft', 'OpenAI'])
-param embedModelFormat string = 'OpenAI'
+param audioModelFormat string = 'OpenAI'
 
-@description('Name of the embedding model to deploy')
-param embedModelName string = 'text-embedding-3-small'
-@description('Name of the embedding model deployment')
-param embeddingDeploymentName string = 'text-embedding-3-small'
-@description('Embedding model dimensionality')
-param embeddingDeploymentDimensions string = '100'
+@description('Name of the audio model to deploy')
+param audioModelName string = 'gpt-4o-mini-audio-preview'
 
-@description('Version of the embedding model to deploy')
-// See version availability in this table:
-// https://learn.microsoft.com/azure/ai-services/openai/concepts/models#embeddings-models
-param embedModelVersion string = '1'
+@description('Version of the audio model to deploy')
+param audioModelVersion string = '2024-12-17'
 
-@description('Sku of the embeddings model deployment')
-param embedDeploymentSku string = 'Standard'
+@description('Sku of the audio deployment')
+param audioDeploymentSku string = 'GlobalStandard'
 
-@description('Capacity of the embedding deployment')
-// You can increase this, but capacity is limited per model/region, so you will get errors if you go over
-// https://learn.microsoft.com/azure/ai-services/openai/quotas-limits
-param embedDeploymentCapacity int = 30
+@description('Capacity of the audio deployment')
+param audioDeploymentCapacity int = 30
 
-// Legacy compatibility parameters 
-param useApplicationInsights bool = true
-@description('Use the RAG search')
-param useSearchService bool = false
+@description('Enable multi-service AI capabilities (required for vision and audio)')
+param enableMultiServiceAI bool = true
 
-@description('Do we want to use the Azure Monitor tracing')
-param enableAzureMonitorTracing bool = false
+// Embedding model parameters archived - not used without search functionality
 
-@description('Do we want to use the Azure Monitor tracing for GenAI content recording')
-param azureTracingGenAIContentRecordingEnabled bool = false
+// Legacy compatibility parameters archived
+// RAG search parameter archived - not used in current implementation
+
+
 
 // Computed values based on user choices and legacy parameters
-var shouldEnableAI = enableAIServices || !empty(azureExistingAIProjectResourceId)
-var shouldEnableAppInsights = enableApplicationInsights || useApplicationInsights
-var shouldEnableSearch = enableSearchService || useSearchService
+var shouldEnableAI = shouldProvisionNewAI || shouldUseExistingAI
+
+// AI Resource variables are now handled directly in the module calls
+// useApplicationInsights parameter usage removed for simplicity
+// shouldEnableSearch variable archived - search functionality not used
 
 param templateValidationMode bool = false
 
@@ -129,9 +152,12 @@ var abbrs = loadJsonContent('./abbreviations.json')
 var resourceToken = templateValidationMode? toLower(uniqueString(resourceGroup().id, environmentName, location, seed)) : toLower(uniqueString(resourceGroup().id, environmentName, location))
 var tags = { 'azd-env-name': environmentName }
 
+// Use conditional parameter or intelligent default
+var effectiveChatDeploymentName = effectiveChatModelName
+
 var aiChatModel = [
   {
-    name: chatDeploymentName
+    name: effectiveChatDeploymentName
     model: {
       format: chatModelFormat
       name: chatModelName
@@ -143,73 +169,68 @@ var aiChatModel = [
     }
   }
 ]
-var aiEmbeddingModel = [ 
+
+var aiAudioModel = [
   {
-    name: embeddingDeploymentName
+    name: effectiveAudioModelName
     model: {
-      format: embedModelFormat
-      name: embedModelName
-      version: embedModelVersion
+      format: audioModelFormat
+      name: audioModelName
+      version: audioModelVersion
     }
     sku: {
-      name: embedDeploymentSku
-      capacity: embedDeploymentCapacity
+      name: audioDeploymentSku
+      capacity: audioDeploymentCapacity
     }
   }
 ]
 
-var aiDeployments = concat(
-  aiChatModel,
-  shouldEnableSearch ? aiEmbeddingModel : [])
+// Validated regions that support BOTH gpt-4o-mini AND gpt-4o-mini-audio-preview
+// Based on official Azure OpenAI documentation (Nov 2025) - eastus and eastus2 have better support
+var dualModelSupportedRegions = ['eastus', 'eastus2', 'swedencentral']
+var isDualModelSupported = contains(dualModelSupportedRegions, aiLocation)
+
+// Deploy both chat and audio models in supported regions
+var aiDeployments = isDualModelSupported ? union(aiChatModel, aiAudioModel) : aiChatModel
+
+// Add validation message for unsupported regions
+output deploymentWarning string = isDualModelSupported ? 'Both models deployed successfully' : 'Audio model skipped - unsupported region. Use swedencentral for full support.'
+// Embedding model removed - not used without search functionality
 
 // Resources will be deployed to the resource group managed by azd
 
-var logAnalyticsWorkspaceResolvedName = !shouldEnableAppInsights
-  ? ''
-  : !empty(logAnalyticsWorkspaceName)
-      ? logAnalyticsWorkspaceName
-      : '${abbrs.operationalInsightsWorkspaces}${resourceToken}'
+// Search service variables moved to archive with search module
 
-var resolvedSearchServiceName = !shouldEnableSearch
-  ? ''
-  : !empty(searchServiceName) ? searchServiceName : '${abbrs.searchSearchServices}${resourceToken}'
+// Key Vault name resolution archived
 
-var resolvedKeyVaultName = !enableKeyVault
-  ? ''
-  : !empty(keyVaultName) ? keyVaultName : '${environmentName}-kv'
-
-// STEP 1: AI and Search services (if enabled)
-module ai 'core/host/ai-environment.bicep' = if (shouldEnableAI && empty(azureExistingAIProjectResourceId)) {
+// STEP 1: AI and Search services (provision new AI services only)
+module ai 'core/host/ai-environment.bicep' = if (shouldProvisionNewAI) {
   name: 'ai'
   params: {
-    location: location
+    location: aiLocation
     tags: tags
-    aiProjectName: !empty(aiProjectName) ? aiProjectName : '${abbrs.machineLearningServicesWorkspaces}${resourceToken}'
-    aiServicesName: !empty(aiServicesName) ? aiServicesName : '${abbrs.cognitiveServicesAccounts}${resourceToken}'
-    storageAccountName: !empty(storageAccountName) ? storageAccountName : '${abbrs.storageStorageAccounts}${resourceToken}'
-    logAnalyticsName: logAnalyticsWorkspaceResolvedName
-    applicationInsightsName: !empty(applicationInsightsName) ? applicationInsightsName : '${abbrs.insightsComponents}${resourceToken}'
-    searchServiceName: resolvedSearchServiceName
+    aiServicesName: !empty(aiServicesName) ? aiServicesName : '${environmentName}-ai'
+    storageAccountName: !empty(storageAccountName) ? storageAccountName : '${replace(environmentName, '-', '')}st'
     aiServiceModelDeployments: aiDeployments
     appInsightConnectionName: 'appinsight-connection'
-    runnerPrincipalId: principalId
-    runnerPrincipalType: runnerPrincipalType
+    enableMultiServiceAI: enableMultiServiceAI
   }
 }
 
-module search 'core/search/search-services.bicep' = if (shouldEnableSearch && shouldEnableAI && empty(azureExistingAIProjectResourceId)) {
-  name: 'search'
-  params: {
-    location: location
-    tags: tags
-    name: resolvedSearchServiceName
-    authOptions: {
-      aadOrApiKey: {
-        aadAuthFailureMode: 'http401WithBearerChallenge'
-      }
-    }
-  }
-}
+// Search service module archived - uncomment and restore from archive/ if RAG scenarios needed
+// module search 'core/search/search-services.bicep' = if (shouldEnableSearch && shouldProvisionNewAI) {
+//   name: 'search'
+//   params: {
+//     location: location
+//     tags: tags
+//     name: resolvedSearchServiceName
+//     authOptions: {
+//       aadOrApiKey: {
+//         aadAuthFailureMode: 'http401WithBearerChallenge'
+//       }
+//     }
+//   }
+// }
 
 // App Service Plan for hosting the TechMart AI chatbot
 module appServicePlan 'core/host/appserviceplan.bicep' = {
@@ -227,63 +248,29 @@ module appServicePlan 'core/host/appserviceplan.bicep' = {
   }
 }
 
-// STEP 2: TechMart AI App Service deployment (deployed after KeyVault)
+// STEP 2: TechMart AI App Service deployment
 module api 'api.bicep' = {
   name: 'api'
   params: {
     name: '${replace(environmentName, '-', '')}app'
     location: location
     tags: union(tags, { 'azd-service-name': 'api' })
-    identityName: enableManagedIdentity ? '${environmentName}-mi' : ''
     appServicePlanId: appServicePlan.outputs.id
     enableAIServices: shouldEnableAI
     enableManagedIdentity: enableManagedIdentity
-    azureExistingAIProjectResourceId: azureExistingAIProjectResourceId
-    chatDeploymentName: chatDeploymentName
-    aiSearchIndexName: aiSearchIndexName
-    searchServiceEndpoint: ''
-    embeddingDeploymentName: embeddingDeploymentName
-    embeddingDeploymentDimensions: embeddingDeploymentDimensions
-    enableAzureMonitorTracing: enableAzureMonitorTracing
-    azureTracingGenAIContentRecordingEnabled: azureTracingGenAIContentRecordingEnabled
-    projectEndpoint: ''
-    applicationInsightsName: shouldEnableAppInsights ? (!empty(applicationInsightsName) ? applicationInsightsName : '${abbrs.insightsComponents}${resourceToken}') : ''
-    // Infrastructure resources - App Service needs to know about these
-    enableKeyVault: enableKeyVault
-    keyVaultName: resolvedKeyVaultName
-    // Note: Credentials are now managed by application via settings page
+    aiFoundryEndpoint: shouldUseExistingAI ? bFoundryEndpoint : ''
+    chatDeploymentName: effectiveChatDeploymentName
+    audioDeploymentName: effectiveAudioModelName
   }
+  dependsOn: shouldProvisionNewAI ? [ai] : []
 }
 
-// STEP 2b: Key Vault - Provision AFTER App Service (uses App Service Managed Identity)
-module keyVault 'core/security/keyvault.bicep' = if (enableKeyVault) {
-  name: 'keyvault'
-  params: {
-    name: resolvedKeyVaultName
-    location: location
-    tags: tags
-    principalId: principalId  // Deployment user access
-    appServicePrincipalId: enableManagedIdentity ? api.outputs.SERVICE_API_IDENTITY_PRINCIPAL_ID : ''  // App Service Managed Identity
-    // Skip secrets for now - will be populated after KeyVault is provisioned
-    azureAIEndpoint: ''
-    azureAIApiKey: ''
-  }
-  // Depends on api implicitly through api.outputs.SERVICE_API_IDENTITY_PRINCIPAL_ID
-}
+// Key Vault module archived - using environment variables with Managed Identity
 
-// STEP 3: Populate KeyVault with secrets after App Service is deployed
-module keyVaultSecrets 'core/security/keyvault-secrets.bicep' = if (enableKeyVault && !empty(externalAzureAIEndpoint)) {
-  name: 'keyvault-secrets'
-  params: {
-    keyVaultName: resolvedKeyVaultName
-    azureAIEndpoint: externalAzureAIEndpoint
-    azureAIApiKey: externalAzureAIApiKey
-  }
-  dependsOn: [keyVault, api]
-}
+// Key Vault secrets module archived - using environment variables
 
 // User roles
-module userRoleAzureAIDeveloper 'core/security/role.bicep' = if (shouldEnableAI) {
+module userRoleAzureAIDeveloper 'core/security/role.bicep' = if (shouldEnableAI && !empty(principalId)) {
   name: 'user-role-azureai-developer'
   params: {
     principalType: runnerPrincipalType
@@ -292,44 +279,10 @@ module userRoleAzureAIDeveloper 'core/security/role.bicep' = if (shouldEnableAI)
   }
 }
 
-module userRoleSearchIndexDataReader 'core/security/role.bicep' = if (useSearchService) {
-  name: 'user-role-search-index-data-reader'
-  params: {
-    principalType: runnerPrincipalType
-    principalId: principalId
-    roleDefinitionId: '1407120a-92aa-4202-b7e9-c0e197c71c8f'
-  }
-}
+// Search service role assignments archived - search functionality removed
 
-module apiRoleSearchIndexDataReader 'core/security/role.bicep' = if (useSearchService) {
-  name: 'api-role-search-index-data-reader'
-  params: {
-    principalType: 'ServicePrincipal'
-    principalId: api.outputs.SERVICE_API_IDENTITY_PRINCIPAL_ID
-    roleDefinitionId: '1407120a-92aa-4202-b7e9-c0e197c71c8f'
-  }
-}
-
-module userRoleSearchServiceContributor 'core/security/role.bicep' = if (useSearchService) {
-  name: 'user-role-search-service-contributor'
-  params: {
-    principalType: runnerPrincipalType
-    principalId: principalId
-    roleDefinitionId: '7ca78c08-252a-4471-8644-bb5ff32d4ba0'
-  }
-}
-
-module apiRoleSearchServiceContributor 'core/security/role.bicep' = if (useSearchService) {
-  name: 'api-role-search-service-contributor'
-  params: {
-    principalType: 'ServicePrincipal'
-    principalId: api.outputs.SERVICE_API_IDENTITY_PRINCIPAL_ID
-    roleDefinitionId: '7ca78c08-252a-4471-8644-bb5ff32d4ba0'
-  }
-}
-
-// App principal access to AI services
-module apiRoleAzureAIDeveloper 'core/security/role.bicep' = if (shouldEnableAI && enableManagedIdentity) {
+// App principal access to AI services (for new AI services)
+module apiRoleAzureAIDeveloper 'core/security/role.bicep' = if (shouldProvisionNewAI && enableManagedIdentity) {
   name: 'api-role-azureai-developer'
   params: {
     principalType: 'ServicePrincipal'
@@ -338,36 +291,26 @@ module apiRoleAzureAIDeveloper 'core/security/role.bicep' = if (shouldEnableAI &
   }
 }
 
-// App principal access to Key Vault (Key Vault Secrets Officer - allows read/write)
-module apiRoleKeyVaultSecretsOfficer 'core/security/role.bicep' = if (enableKeyVault && enableManagedIdentity) {
-  name: 'api-role-keyvault-secrets-officer'
+// RBAC setup for existing AI Foundry (automated via deployment script)
+module existingAIRbacInstructions 'core/ai/existing-ai-rbac.bicep' = if (shouldUseExistingAI && enableManagedIdentity) {
+  name: 'existing-ai-rbac-instructions'
+  scope: resourceGroup(existingAISubscriptionId, existingAIResourceGroupName)
   params: {
-    principalType: 'ServicePrincipal'
-    principalId: api.outputs.SERVICE_API_IDENTITY_PRINCIPAL_ID
-    roleDefinitionId: 'b86a8fe4-44ce-4948-aee5-eccb2c155cd7' // Key Vault Secrets Officer
+    aiFoundryResourceId: computedAIResourceId
+    appServicePrincipalId: api.outputs.SERVICE_API_IDENTITY_PRINCIPAL_ID
   }
 }
 
-// User access to Key Vault (Key Vault Administrator for deployment) - temporarily disabled
-// module userRoleKeyVaultAdministrator 'core/security/role.bicep' = if (enableKeyVault) {
-//   name: 'user-role-keyvault-administrator'
-//   scope: rg
-//   params: {
-//     principalType: runnerPrincipalType
-//     principalId: principalId
-//     roleDefinitionId: '00482a5a-887f-4fb3-b363-3b7fe8e74483' // Key Vault Administrator
-//   }
-// }
+// Key Vault role assignment archived - no longer needed with environment variables
 
-// Debug Outputs - Track deployment flow and values for KeyVault-first approach
+// Key Vault user role archived
+
+// Debug Outputs - Track deployment flow
 output DEBUG_PARAMETERS object = {
-  enableKeyVault: enableKeyVault
   enableManagedIdentity: enableManagedIdentity
   principalIdProvided: !empty(principalId)
   principalIdLength: length(principalId)
-  resolvedKeyVaultName: resolvedKeyVaultName
   externalAzureAIEndpointProvided: !empty(externalAzureAIEndpoint)
-  keyVaultSecretsModuleDeployed: enableKeyVault && !empty(externalAzureAIEndpoint)
 }
 
 // Resource Naming Debug - Show what names will be used
@@ -376,18 +319,20 @@ output DEBUG_RESOURCE_NAMES object = {
   resourceToken: resourceToken
   appServiceName: '${replace(environmentName, '-', '')}app'
   appServicePlanName: !empty(appServicePlanName) ? appServicePlanName : '${environmentName}-asplan'
-  keyVaultName: resolvedKeyVaultName
-  managedIdentityName: enableManagedIdentity ? '${environmentName}-mi' : ''
-  aiProjectName: !empty(aiProjectName) ? aiProjectName : '${abbrs.machineLearningServicesWorkspaces}${resourceToken}'
+  // keyVaultName archived
+  // managedIdentityName archived - using system-assigned identity only
   aiServicesName: !empty(aiServicesName) ? aiServicesName : '${abbrs.cognitiveServicesAccounts}${resourceToken}'
   storageAccountName: !empty(storageAccountName) ? storageAccountName : '${abbrs.storageStorageAccounts}${resourceToken}'
 }
 
-output DEBUG_KEYVAULT_FIRST_DEPLOYMENT object = {
-  step1_keyVault: enableKeyVault ? 'Deployed first (no app dependency)' : 'Disabled'
-  step2_appService: 'Deployed after KeyVault'
-  step3_secrets: enableKeyVault && !empty(externalAzureAIEndpoint) ? 'Will populate after app' : 'No endpoint provided'
-  step4_roleAssignments: 'RBAC roles assigned automatically'
+output DEBUG_AI_FOUNDRY_DEPLOYMENT object = {
+  aiFoundryMode: aSetupChoice
+  shouldProvisionNewAI: shouldProvisionNewAI
+  shouldUseExistingAI: shouldUseExistingAI
+  existingEndpoint: bFoundryEndpoint
+  existingResourceId: computedAIResourceId
+  configurationMethod: 'direct-environment-variables'
+  rbacInstructions: shouldUseExistingAI ? 'Check existingAIRbacInstructions module output' : 'Auto-configured for new AI services'
 }
 
 // Outputs
@@ -396,19 +341,13 @@ output AZURE_RESOURCE_GROUP string = resourceGroup().name
 
 // Outputs required for local development server
 output AZURE_TENANT_ID string = tenant().tenantId
-output AZURE_EXISTING_AIPROJECT_RESOURCE_ID string = azureExistingAIProjectResourceId
-output AZURE_AI_CHAT_DEPLOYMENT_NAME string = shouldEnableAI ? chatDeploymentName : ''
-output AZURE_AI_EMBED_DEPLOYMENT_NAME string = shouldEnableSearch ? embeddingDeploymentName : ''
-output AZURE_AI_SEARCH_INDEX_NAME string = shouldEnableSearch ? aiSearchIndexName : ''
+output AZURE_AI_CHAT_DEPLOYMENT_NAME string = shouldEnableAI ? effectiveChatDeploymentName : ''
+// Search-related outputs archived - search functionality removed
 output AZURE_AI_SEARCH_ENDPOINT string = ''
-output AZURE_AI_EMBED_DIMENSIONS string = shouldEnableSearch ? embeddingDeploymentDimensions : ''
-output AZURE_EXISTING_AIPROJECT_ENDPOINT string = ''
-output ENABLE_AZURE_MONITOR_TRACING bool = shouldEnableAppInsights ? enableAzureMonitorTracing : false
-output AZURE_TRACING_GEN_AI_CONTENT_RECORDING_ENABLED bool = shouldEnableAppInsights ? azureTracingGenAIContentRecordingEnabled : false
+output AZURE_INFERENCE_ENDPOINT string = shouldUseExistingAI ? bFoundryEndpoint : ''
+output AZURE_AI_AUDIO_DEPLOYMENT_NAME string = shouldEnableAI ? effectiveAudioModelName : ''
 
-// Key Vault outputs
-output AZURE_KEY_VAULT_NAME string = enableKeyVault ? resolvedKeyVaultName : ''
-output AZURE_KEY_VAULT_URI string = enableKeyVault ? 'https://${resolvedKeyVaultName}${environment().suffixes.keyvaultDns}/' : ''
+// Key Vault outputs archived
 
 // Outputs required by azd for App Service
 output SERVICE_API_IDENTITY_PRINCIPAL_ID string = api.outputs.SERVICE_API_IDENTITY_PRINCIPAL_ID

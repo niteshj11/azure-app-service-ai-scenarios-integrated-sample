@@ -7,7 +7,7 @@ import logging
 import json
 import zlib
 import base64
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict
 from werkzeug.utils import secure_filename
 from flask import session
 

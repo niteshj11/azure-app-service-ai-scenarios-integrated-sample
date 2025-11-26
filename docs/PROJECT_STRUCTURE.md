@@ -27,8 +27,8 @@ This document provides a comprehensive overview of the TechMart AI Chatbot proje
 ```
 📄 AIPlaygroundCode/
 ├── 📄 __init__.py           # Package initialization with register_ai_routes() function for easy integration
-├── 📄 config.py             # Complete configuration management with Azure AI settings, Key Vault integration, and environment detection
-├── 📄 settings.json         # Application configuration with Azure AI credentials (upload_folder: "AIPlaygroundCode/uploads")
+├── 📄 config.py             # Complete configuration management with Azure AI Foundry settings, Managed Identity support, and environment detection
+├── 📄 settings.json         # Application configuration with Azure AI Foundry credentials (upload_folder: "AIPlaygroundCode/uploads")
 ├── 📄 settings.json.template # Template showing required configuration structure  
 └── 📄 settings.local.json.template # Local development configuration template
 ```
@@ -47,7 +47,7 @@ This document provides a comprehensive overview of the TechMart AI Chatbot proje
 ```
 📁 AIPlaygroundCode/utils/
 ├── 📄 __init__.py           # Package initialization for utility functions
-├── 📄 azure_client.py       # Azure AI SDK integration and connection management
+├── 📄 azure_client.py       # Azure AI Foundry SDK integration, Managed Identity authentication, and connection management
 └── 📄 helpers.py            # Session management, file handling, and error formatting (improved truncation limits)
 ```
 
@@ -90,12 +90,12 @@ This document provides a comprehensive overview of the TechMart AI Chatbot proje
 
 ### Azure Infrastructure
 ```
-� infra/                    # Bicep templates for Azure App Service deployment
-├── 📄 main.bicep            # Main infrastructure template with App Service and Key Vault
-├── 📄 api.bicep             # App Service configuration with environment variables
+📁 infra/                    # Bicep templates for Azure App Service deployment
+├── 📄 main.bicep            # Main infrastructure template with App Service and Azure AI Foundry integration
+├── 📄 api.bicep             # App Service configuration with Managed Identity and environment variables
 ├── 📄 main.json             # Compiled ARM template from main.bicep
 ├── 📄 abbreviations.json    # Azure resource naming conventions
-└── 📁 core/host/            # App Service hosting components
+└── 📁 core/host/            # App Service hosting components with AI service integration
 ```
 
 ### Automation Scripts
@@ -126,8 +126,9 @@ This document provides a comprehensive overview of the TechMart AI Chatbot proje
 ### For Existing Flask Apps
 1. **Copy AIPlaygroundCode folder** to your project root
 2. **Add one line**: `from AIPlaygroundCode import register_ai_routes; register_ai_routes(app)`
-3. **Configure Azure AI**: Update `AIPlaygroundCode/settings.json`
+3. **Configure Azure AI Foundry**: Update `AIPlaygroundCode/settings.json` with Azure AI Foundry endpoint
 4. **Add popup HTML**: Include popup integration code in your templates
+5. **For Azure deployment**: Ensure Managed Identity has proper roles (Cognitive Services OpenAI User, Azure AI Developer)
 
 ### Key Benefits
 - **✅ Portable**: Self-contained AIPlaygroundCode package
@@ -152,7 +153,7 @@ This document provides a comprehensive overview of the TechMart AI Chatbot proje
 ```
 📁 docs/
 ├── 📄 PROJECT_STRUCTURE.md         # This comprehensive architecture guide explaining codebase organization, file purposes, and development workflow
-├── 📄 CONFIGURATION_GUIDE.md       # Azure AI configuration and settings management with environment setup and credential handling
+├── 📄 CONFIGURATION_GUIDE.md       # Azure AI Foundry configuration and settings management with Managed Identity setup and credential handling
 ├── 📄 TESTING_GUIDE.md             # Comprehensive testing guide covering automated tests, manual procedures, and deployment validation
 ├── 📄 PROJECT_CLEANUP_INSTRUCTIONS.md # Project cleanup automation guide for production deployment preparation
 └── 📄 AGENT_INSTRUCTIONS.md        # AI agent development guidelines and best practices for maintaining and extending the codebase

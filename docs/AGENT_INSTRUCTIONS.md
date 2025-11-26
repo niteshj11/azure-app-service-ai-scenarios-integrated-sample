@@ -32,7 +32,8 @@ python tests/test_multimodal_image.py popup local basic
 # Deploy
 azd up
 
-# Configure at https://[app].azurewebsites.net/settings
+# Configuration usually automatic via Managed Identity
+# If needed, configure at https://njv55app.azurewebsites.net/settings  
 # Test
 python tests/test_simple_chat.py popup azure basic
 ```
@@ -41,13 +42,13 @@ python tests/test_simple_chat.py popup azure basic
 
 ## ⚙️ Configuration Management
 
-**Local:** All settings in `AIPlaygroundCode/settings.json`
-**Azure:** Sensitive data → Key Vault, non-sensitive → settings.json
+**Local:** All settings in `AIPlaygroundCode/settings.json` with Azure AI Foundry endpoint
+**Azure:** Managed Identity authentication (automatic), environment variables via App Service
 **Settings Page:** `/settings` - configure via web interface with testing
 
 **Key Files:**
-- `AIPlaygroundCode/config.py` - Configuration logic
-- `AIPlaygroundCode/settings.json` - Main config (upload_folder: "AIPlaygroundCode/uploads")  
+- `AIPlaygroundCode/config.py` - Configuration logic with Azure AI Foundry support
+- `AIPlaygroundCode/settings.json` - Main config with Azure AI Foundry endpoint (upload_folder: "AIPlaygroundCode/uploads")  
 - `AIPlaygroundCode/settings.local.json` - Local override (not committed)
 
 ## 🧹 Project Cleanup
@@ -72,8 +73,9 @@ python tests/test_simple_chat.py popup azure basic
 
 **App won't start:** Check port 5000, stop existing processes
 **Tests failing:** Ensure app running, check `/settings` page configuration  
-**Config issues:** Verify endpoint URL ends with `/models`, test API key
-**Deploy issues:** Clean with `.\scripts\clean-azd-environment.ps1`, retry `azd up`
+**Config issues:** Verify Azure AI Foundry endpoint format (e.g., `https://project-name.region.models.ai.azure.com/`), test API key locally
+**Deploy issues:** Clean with `.\scripts\clean-azd-environment.ps1`, retry `azd up`, verify Managed Identity permissions
+**Azure Auth issues:** Ensure Managed Identity has roles: Cognitive Services OpenAI User, Azure AI Developer
 
 ## � Quick References
 

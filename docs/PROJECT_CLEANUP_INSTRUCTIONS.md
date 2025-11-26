@@ -59,16 +59,16 @@ This document provides instructions for cleaning up a TechMart AI Chatbot projec
 
 **✅ Core Application:**
 - `app.py` - Main Flask application with AIPlaygroundCode integration
-- `wsgi.py` - Production WSGI entry point  
-- `requirements.txt` - Python dependencies
-- `azure.yaml` - Azure deployment configuration
+- `wsgi.py` - Production WSGI entry point with Azure AI Foundry support
+- `requirements.txt` - Python dependencies including Azure Identity SDK
+- `azure.yaml` - Azure deployment configuration with Azure AI Foundry integration
 
 **✅ AIPlaygroundCode Package:**
 - `AIPlaygroundCode/__init__.py` - Package initialization
-- `AIPlaygroundCode/config.py` - **SINGLE** configuration file
-- `AIPlaygroundCode/settings.json` - Configuration with `upload_folder: "AIPlaygroundCode/uploads"`
-- `AIPlaygroundCode/scenarios/` - AI scenario handlers
-- `AIPlaygroundCode/utils/` - Helper utilities
+- `AIPlaygroundCode/config.py` - **SINGLE** configuration file with Azure AI Foundry support
+- `AIPlaygroundCode/settings.json` - Configuration with Azure AI Foundry endpoint and `upload_folder: "AIPlaygroundCode/uploads"`
+- `AIPlaygroundCode/scenarios/` - AI scenario handlers with multimodal support
+- `AIPlaygroundCode/utils/` - Helper utilities with Managed Identity support
 - `AIPlaygroundCode/templates/` - Web interface templates
 
 **✅ Essential Documentation (5 files only):**
@@ -95,6 +95,9 @@ python -c "from AIPlaygroundCode import register_ai_routes; print('✅ AIPlaygro
 # 3. Check upload folder configuration
 python -c "from AIPlaygroundCode.config import get_model_config; print(f'Upload folder: {get_model_config().upload_folder}')"
 # Should show: AIPlaygroundCode/uploads
+
+# 4. Verify Azure AI Foundry configuration (if configured)
+python -c "from AIPlaygroundCode.config import get_model_config; config = get_model_config(); print(f'Endpoint: {config.azure_endpoint}'); print('✅ Configuration loaded')"
 
 # 4. Run core tests
 python tests/test_simple_chat.py popup local basic

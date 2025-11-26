@@ -10,6 +10,14 @@ from ..utils.azure_client import get_azure_client
 from ..utils.helpers import get_conversation_history
 from ..config import get_model_config
 
+# Check for OpenAI SDK availability
+try:
+    from openai import AzureOpenAI
+    OPENAI_SDK_AVAILABLE = True
+except ImportError:
+    OPENAI_SDK_AVAILABLE = False
+    AzureOpenAI = None
+
 
 def handle_structured_message(user_message: str) -> str:
     """
@@ -24,17 +32,28 @@ def handle_structured_message(user_message: str) -> str:
     client = get_azure_client()
     config = get_model_config()
     
-    output_type = detect_structure_type(user_message)
+    output_type = "structured_data"
     messages = build_structured_messages(user_message, output_type)
     
-    # Use JSON object response format following Microsoft patterns
-    response = client.complete(
-        messages=messages,
-        model=config.model,
-        max_tokens=1500,
-        temperature=0.1,
-        response_format={"type": "json_object"}  # Microsoft recommended approach
-    )
+    # Handle both OpenAI SDK and azure.ai.inference
+    if OPENAI_SDK_AVAILABLE and isinstance(client, AzureOpenAI):
+        # Use OpenAI SDK interface with JSON response format
+        response = client.chat.completions.create(
+            messages=messages,
+            model=config.model,
+            max_tokens=1500,
+            temperature=0.1,
+            response_format={"type": "json_object"}  # Microsoft recommended approach
+        )
+    else:
+        # Use azure.ai.inference interface
+        response = client.complete(
+            messages=messages,
+            model=config.model,
+            max_tokens=1500,
+            temperature=0.1,
+            response_format={"type": "json_object"}  # Microsoft recommended approach
+        )
     
     raw_response = response.choices[0].message.content
     structured_data = extract_and_validate_json(raw_response)
@@ -42,23 +61,7 @@ def handle_structured_message(user_message: str) -> str:
     return format_structured_response(structured_data, output_type)
 
 
-def detect_structure_type(user_message: str) -> str:
-    """Detect structure type from user message."""
-    message_lower = user_message.lower()
-    
-    structure_patterns = {
-        "product_info": ["product", "item", "catalog", "inventory"],
-        "customer_data": ["customer", "user", "client", "contact"],
-        "business_analysis": ["analysis", "report", "metrics", "kpi"],
-        "task_list": ["tasks", "todo", "steps", "checklist"],
-        "general": []
-    }
-    
-    for structure_type, keywords in structure_patterns.items():
-        if any(keyword in message_lower for keyword in keywords):
-            return structure_type
-    
-    return "general"
+
 
 
 def build_structured_messages(user_message: str, output_type: str) -> List[Dict[str, str]]:

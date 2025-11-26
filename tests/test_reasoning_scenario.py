@@ -8,9 +8,13 @@ import requests
 import json
 import sys
 import time
+import os
 from datetime import datetime
 from html_report_generator import HTMLReportGenerator
 from bs4 import BeautifulSoup
+
+# Add project root to path for imports
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from test_config import BASE_URL, AZURE_URL, TESTING_LOCAL, TESTING_AZURE
 
 def test_reasoning_scenario(base_url, report_generator=None, basic_mode=False):

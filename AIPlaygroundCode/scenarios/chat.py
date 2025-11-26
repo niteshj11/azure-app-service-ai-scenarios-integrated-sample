@@ -9,6 +9,13 @@ from ..utils.azure_client import get_azure_client
 from ..utils.helpers import get_conversation_history
 from ..config import get_model_config
 
+# Import OpenAI SDK if available
+try:
+    from openai import AzureOpenAI
+    OPENAI_SDK_AVAILABLE = True
+except ImportError:
+    OPENAI_SDK_AVAILABLE = False
+
 
 def handle_chat_message(user_message: str) -> str:
     """
@@ -25,14 +32,28 @@ def handle_chat_message(user_message: str) -> str:
     
     messages = build_chat_messages(user_message)
     
-    response = client.complete(
-        messages=messages,
-        model=config.model,
-        max_tokens=config.max_tokens,
-        temperature=config.temperature
-    )
-    
-    return response.choices[0].message.content
+    # Handle both OpenAI SDK and azure.ai.inference
+    if OPENAI_SDK_AVAILABLE and isinstance(client, AzureOpenAI):
+        # Use OpenAI SDK interface
+        response = client.chat.completions.create(
+            messages=messages,
+            model=config.model,
+            max_tokens=config.max_tokens,
+            temperature=config.temperature,
+            top_p=config.top_p,
+            frequency_penalty=config.frequency_penalty,
+            presence_penalty=config.presence_penalty
+        )
+        return response.choices[0].message.content
+    else:
+        # Use azure.ai.inference interface
+        response = client.complete(
+            messages=messages,
+            model=config.model,
+            max_tokens=config.max_tokens,
+            temperature=config.temperature
+        )
+        return response.choices[0].message.content
 
 
 def build_chat_messages(user_message: str) -> List[Dict[str, str]]:
@@ -56,17 +77,3 @@ def build_chat_messages(user_message: str) -> List[Dict[str, str]]:
     })
     
     return messages
-
-
-def get_chat_example() -> Dict[str, str]:
-    """
-    Get example chat interaction for documentation.
-    
-    Returns:
-        Dictionary with example user input and expected response pattern
-    """
-    return {
-        "user_input": "What services does TechMart offer?",
-        "response_pattern": "Professional response about TechMart's services",
-        "description": "Basic conversational AI for customer service and general inquiries"
-    }

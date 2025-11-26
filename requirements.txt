@@ -13,15 +13,10 @@ Markdown==3.5.1
 azure-ai-inference>=1.0.0b4
 azure-core>=1.30.0
 azure-identity>=1.15.0
-
-# Azure Key Vault SDK (optional - for production Key Vault integration)
-azure-keyvault-secrets>=4.7.0
+openai>=1.35.13
 
 # Environment configuration
-python-dotenv==1.0.0
-
-# HTTP requests
-requests==2.31.0
+python-dotenv>=1.0.1
 
 # Production server (optional - for deployment)
 gunicorn==21.2.0

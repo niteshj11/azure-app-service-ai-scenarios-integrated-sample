@@ -10,17 +10,17 @@ The TechMart AI Chatbot uses AIPlaygroundCode's intelligent configuration system
 1. **Start the application**: `python app.py`
 2. **Open settings page**: http://127.0.0.1:5000/settings  
 3. **Configure minimum required settings**:
-   - ✅ **Azure AI Endpoint**: `https://your-endpoint.services.ai.azure.com/models`
-   - ✅ **API Key**: Your Azure AI Foundry API key
+   - ✅ **Azure AI Foundry Endpoint**: `https://your-project-name.region.models.ai.azure.com/`
+   - ✅ **API Key**: Your Azure AI Foundry API key *(production uses Managed Identity)*
    - ✅ **Model Name**: `gpt-4o-mini` (or your deployed model)
 4. **Click "Save Settings"** → Settings saved to `AIPlaygroundCode/settings.json`
 5. **Test the configuration**: Click "🧪 Test Config" button to verify connection
 
 ### After Azure Deployment  
 1. **Open your Azure app**: `https://[your-app-name].azurewebsites.net/settings`
-2. **Configure same minimum settings** (endpoint, API key, model)
-3. **Click "Save Settings"** → Sensitive data goes to Azure Key Vault, non-sensitive to settings.json
-4. **Test the configuration**: Verify Azure AI connection works
+2. **Configuration automatic**: Azure deployment configures Managed Identity and environment variables automatically
+3. **Verify settings**: Check that Azure AI Foundry endpoint and model names are correctly set
+4. **Test the configuration**: Click "🧪 Test Config" to verify Azure AI Foundry connection
 
 **That's all you need!** The application will work with default settings for all other options.
 
@@ -36,8 +36,8 @@ The TechMart AI Chatbot uses AIPlaygroundCode's intelligent configuration system
 - **Security**: Keep API keys in settings.local.json (not committed to git)
 
 **☁️ Azure Production:**  
-- **Sensitive data** → **Azure Key Vault** (endpoint, api_key)
-- **Non-sensitive data** → `AIPlaygroundCode/settings.json` (deployed with app)
+- **Authentication** → **Managed Identity** (no API keys needed in production)
+- **Configuration** → **App Service Environment Variables** and `AIPlaygroundCode/settings.json`
 - **Automatic environment detection** based on Azure App Service indicators
 
 ### **2. Settings Retrieval Process**
@@ -48,9 +48,9 @@ The TechMart AI Chatbot uses AIPlaygroundCode's intelligent configuration system
 3. Environment variables (fallback)
 
 **Azure Priority Order:**
-1. Azure Key Vault secrets: `AZURE-AI-ENDPOINT`, `AZURE-AI-KEY` (sensitive data)
-2. `AIPlaygroundCode/settings.json` (non-sensitive data)  
-3. App Service environment variables (fallback)
+1. App Service environment variables: `AZURE_INFERENCE_ENDPOINT`, `AZURE_AI_CHAT_DEPLOYMENT_NAME`, etc.
+2. `AIPlaygroundCode/settings.json` (deployed configuration)  
+3. Managed Identity for authentication (automatic)
 
 ### **3. Settings Save Process (via /settings page)**
 
@@ -59,7 +59,7 @@ The TechMart AI Chatbot uses AIPlaygroundCode's intelligent configuration system
 2. `AIPlaygroundCode.config.update_model_config()` processes the data
 3. **Environment-aware saving**:
    - **Local**: All data → `AIPlaygroundCode/settings.json`
-   - **Azure**: Sensitive data → Key Vault, rest → `settings.json`
+   - **Azure**: Configuration → App Service environment variables and `settings.json`
 4. Settings immediately take effect (no restart needed)
 
 ---
@@ -67,8 +67,8 @@ The TechMart AI Chatbot uses AIPlaygroundCode's intelligent configuration system
 ## ⚙️ Settings Options in /settings Page
 
 ### **🔐 Required Settings (Must Configure)**
-- **Azure AI Endpoint** - Your Azure AI Foundry endpoint URL ending with `/models`  
-- **API Key** - Azure AI Foundry API key (stored securely in Key Vault on Azure)
+- **Azure AI Foundry Endpoint** - Your project endpoint URL (format: `https://project-name.region.models.ai.azure.com/`)  
+- **API Key** - Azure AI Foundry API key (for local development; production uses Managed Identity)
 - **Model Name** - Deployed model name (e.g., `gpt-4o-mini`, `claude-3-5-sonnet-20241022`)
 
 ### **🔤 Basic Text Settings**
@@ -106,9 +106,9 @@ The TechMart AI Chatbot uses AIPlaygroundCode's intelligent configuration system
 
 ## 🔐 Data Classification & Storage
 
-### **🔒 Sensitive Data (Secured Storage)**
-- **Azure AI Endpoint** - Service URL (Key Vault on Azure, settings.json locally)
-- **API Key** - Authentication token (Key Vault on Azure, settings.json locally)
+### **🔒 Authentication (Environment-Specific)**
+- **Azure AI Foundry Endpoint** - Project URL (App Service environment variables on Azure, settings.json locally)
+- **API Key** - Authentication token (for local development only; Azure uses Managed Identity)
 
 ### **📄 Non-Sensitive Data (Configuration Files)**
 - **Model Settings**: `model`, `audio_model`, `max_tokens`, `temperature`
@@ -127,15 +127,16 @@ The TechMart AI Chatbot uses AIPlaygroundCode's intelligent configuration system
 
 **Azure Production:**
 ```  
-🔐 Azure Key Vault             # ← Sensitive only
-├── AZURE-AI-ENDPOINT          
-└── AZURE-AI-KEY              
+🌐 App Service Environment Variables  # ← Azure AI Foundry configuration
+├── AZURE_INFERENCE_ENDPOINT          # Project endpoint
+├── AZURE_AI_CHAT_DEPLOYMENT_NAME    # Chat model deployment
+└── AZURE_AI_AUDIO_DEPLOYMENT_NAME   # Audio model deployment
 
-📄 AIPlaygroundCode/settings.json  # ← Non-sensitive (deployed with app)
+🔐 Managed Identity             # ← Authentication (automatic)
+├── Cognitive Services OpenAI User
+└── Azure AI Developer
 
-🌐 App Service Environment     # ← Fallback references  
-├── @Microsoft.KeyVault(SecretUri=...)
-└── Infrastructure variables
+📄 AIPlaygroundCode/settings.json  # ← Application configuration (deployed with app)
 ```
 
 ### **📋 Key Configuration Paths**

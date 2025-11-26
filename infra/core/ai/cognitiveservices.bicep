@@ -8,7 +8,7 @@ param disableLocalAuth bool = true
 param deployments array = []
 param appInsightsId string = ''
 param appInsightConnectionString string = ''
-param appInsightConnectionName string
+param appInsightConnectionName string = 'appinsight-connection'
 
 @allowed([ 'Enabled', 'Disabled' ])
 param publicNetworkAccess string = 'Enabled'
@@ -98,9 +98,9 @@ resource appInsightConnection 'Microsoft.CognitiveServices/accounts/connections@
 // }
 
 @batchSize(1)
-resource aiServicesDeployments 'Microsoft.CognitiveServices/accounts/deployments@2023-10-01-preview' = [for deployment in deployments: {
+resource aiServicesDeployments 'Microsoft.CognitiveServices/accounts/deployments@2023-10-01-preview' = [for (deployment, i) in deployments: {
   parent: account
-  name: deployment.name
+  name: !empty(deployment.name) ? replace(deployment.name, '/', '-') : 'deployment-${i}'
   properties: {
     model: deployment.model
     raiPolicyName: deployment.?raiPolicyName
@@ -109,6 +109,7 @@ resource aiServicesDeployments 'Microsoft.CognitiveServices/accounts/deployments
 }]
 
 output id string = account.id
+output resourceId string = account.id
 output name string = account.name
 output endpoint string = '${account.properties.endpoint}models'
 // AI Project outputs temporarily disabled

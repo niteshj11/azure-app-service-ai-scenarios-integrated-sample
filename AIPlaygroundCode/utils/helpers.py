@@ -162,6 +162,7 @@ def get_conversation_history() -> List[Dict[str, str]]:
 def add_to_conversation(role: str, content: str) -> None:
     """
     Add message to conversation history with compression and size management.
+    Enhanced for multimodal content handling.
     
     Args:
         role: Message role ('user' or 'assistant')
@@ -171,29 +172,33 @@ def add_to_conversation(role: str, content: str) -> None:
         # Get current conversation
         conversation = get_conversation_history()
         
-        # Truncate content if too long to keep session manageable
-        truncated_content = _truncate_message_content(content)
+        # Enhanced content processing for multimodal scenarios
+        processed_content = _process_multimodal_content(content)
         
         # Add new message
         conversation.append({
             'role': role,
-            'content': truncated_content
+            'content': processed_content
         })
         
-        # Implement moderate cleanup to keep session manageable
-        # Keep only last 20 messages (10 exchanges) for better context
-        if len(conversation) > 20:
-            conversation = conversation[-20:]
+        # Dynamic conversation length based on content size
+        max_messages = _calculate_max_messages(conversation)
+        if len(conversation) > max_messages:
+            conversation = conversation[-max_messages:]
         
         # Store in compressed format
         compressed_conv = _compress_conversation(conversation)
         
-        # Check if compressed size is still manageable
-        # If compressed conversation is still too large, reduce further
-        if len(compressed_conv) > 4000:  # More generous limit for compressed data
-            # Keep only last 12 messages (6 exchanges)
-            conversation = conversation[-12:]
+        # Enhanced size checking with fallback strategies
+        if len(compressed_conv) > 3500:  # Stricter limit for cookie safety
+            # Strategy 1: Reduce conversation length further
+            conversation = conversation[-8:]
             compressed_conv = _compress_conversation(conversation)
+            
+            # Strategy 2: If still too large, remove multimodal metadata
+            if len(compressed_conv) > 3500:
+                conversation = _strip_multimodal_metadata(conversation)
+                compressed_conv = _compress_conversation(conversation)
         
         # Clear legacy format and store compressed
         session.pop('conversation', None)
@@ -323,3 +328,133 @@ def validate_message_input(message: str) -> bool:
         return False
     
     return True
+
+
+def _process_multimodal_content(content: str) -> str:
+    """
+    Process content for multimodal scenarios to reduce session size.
+    
+    Args:
+        content: Original message content
+        
+    Returns:
+        Processed content optimized for session storage
+    """
+    # Check if content contains multimodal indicators
+    if any(indicator in content.lower() for indicator in ['🎤 **audio', '🖼️ **image', 'data:image', 'input_audio']):
+        # For multimodal content, create a summary instead of storing full details
+        if '🎤 **audio' in content:
+            # Extract key information from audio processing response
+            lines = content.split('\n')
+            summary_lines = []
+            for line in lines:
+                if any(key in line.lower() for key in ['**file**:', '**request**:', '**transcription**:', '**ai analysis**:']):
+                    # Truncate long transcriptions and analyses
+                    if len(line) > 200:
+                        line = line[:200] + '...[truncated]'
+                    summary_lines.append(line)
+            
+            if summary_lines:
+                return '\n'.join(summary_lines) + '\n\n*[Audio content summarized for session efficiency]*'
+        
+        elif '🖼️ **image' in content or 'analyzed the image' in content.lower():
+            # For image content, keep summary but remove any base64 data
+            processed = content.replace('data:image/jpeg;base64,', '[base64 data removed]')
+            if len(processed) > 500:
+                processed = processed[:500] + '...[truncated for session efficiency]'
+            return processed
+    
+    # For regular content, apply standard truncation
+    return _truncate_message_content(content)
+
+
+def _calculate_max_messages(conversation: List[Dict[str, str]]) -> int:
+    """
+    Calculate maximum number of messages to keep based on content size.
+    
+    Args:
+        conversation: Current conversation history
+        
+    Returns:
+        Maximum number of messages to retain
+    """
+    # Estimate average message size
+    if not conversation:
+        return 16
+    
+    total_size = sum(len(msg.get('content', '')) for msg in conversation)
+    avg_size = total_size / len(conversation) if conversation else 0
+    
+    # Adjust max messages based on average size
+    if avg_size > 1000:  # Large messages (multimodal content)
+        return 8
+    elif avg_size > 500:  # Medium messages
+        return 12
+    else:  # Small messages
+        return 20
+
+
+def _strip_multimodal_metadata(conversation: List[Dict[str, str]]) -> List[Dict[str, str]]:
+    """
+    Remove multimodal metadata from conversation to save space.
+    
+    Args:
+        conversation: Conversation history
+        
+    Returns:
+        Conversation with multimodal metadata removed
+    """
+    cleaned_conversation = []
+    
+    for msg in conversation:
+        content = msg.get('content', '')
+        
+        # Remove common multimodal metadata patterns
+        if '🎤 **Audio Processing Complete**' in content:
+            # Keep only the essential parts
+            lines = content.split('\n')
+            essential_lines = []
+            for line in lines:
+                if any(key in line for key in ['**AI Analysis**:', '**Transcription**:']):
+                    essential_lines.append(line)
+                elif line.startswith('**') and len(essential_lines) < 3:
+                    essential_lines.append(line)
+            
+            content = '\n'.join(essential_lines) + '\n*[Audio metadata removed]*'
+        
+        # Remove base64 image data references
+        content = content.replace('data:image/jpeg;base64,', '[image]')
+        
+        # Limit content length
+        if len(content) > 300:
+            content = content[:300] + '...[content trimmed]'
+        
+        cleaned_conversation.append({
+            'role': msg['role'],
+            'content': content
+        })
+    
+    return cleaned_conversation
+
+
+def clear_session_multimodal_data() -> None:
+    """
+    Clear multimodal-specific data from session to free up space.
+    Called when session size becomes critical.
+    """
+    try:
+        # Clear temporary upload data
+        session.pop('temp_upload_data', None)
+        
+        # Clear any cached file references
+        session.pop('last_upload_info', None)
+        
+        # Clear large response cache if present
+        session.pop('response_cache', None)
+        
+        session.modified = True
+        logger.info("Cleared multimodal session data")
+        
+    except RuntimeError:
+        # Working outside request context
+        pass

@@ -20,25 +20,50 @@ hooks:
     shell: pwsh
     interactive: true
     run: |
+      Write-Host "" -ForegroundColor Cyan
+      Write-Host "=== DEBUG: PREPROVISION HOOK START ===" -ForegroundColor Cyan
+      Write-Host "Timestamp: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" -ForegroundColor Gray
+      Write-Host "" -ForegroundColor Cyan
+      
       # Set up principal ID for RBAC (required for role assignments)
+      Write-Host "🔐 Setting up principal ID for RBAC..." -ForegroundColor Cyan
       try {
           $currentUser = az ad signed-in-user show --query id --output tsv
           if ($currentUser) {
               azd env set principalId $currentUser
+              Write-Host "✓ Principal ID set: $currentUser" -ForegroundColor Green
+          } else {
+              Write-Host "⚠️  Could not retrieve current user ID" -ForegroundColor Yellow
           }
       } catch {
-          # Ignore error - can be set manually if needed
+          Write-Host "⚠️  Error retrieving principal ID: $($_.Exception.Message)" -ForegroundColor Yellow
+          Write-Host "   This can be set manually if needed" -ForegroundColor Gray
       }
       
-      # Collect AI Setup parameters BEFORE provisioning starts
-      Write-Host "🤖 Configuring AI Services Setup..." -ForegroundColor Cyan
+      Write-Host "" -ForegroundColor Cyan
+      Write-Host "🤖 DEBUG: Collecting AI Setup parameters..." -ForegroundColor Cyan
+      Write-Host "Current environment variables:" -ForegroundColor Gray
+      try {
+          $envVars = @('aSetupChoice', 'bFoundryEndpoint', 'cChatModelName', 'dAudioModelName', 'eAISubscriptionId', 'fAIResourceGroup')
+          foreach ($var in $envVars) {
+              $value = azd env get-value $var 2>$null
+              if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrEmpty($value)) {
+                  Write-Host "   $var = $value" -ForegroundColor Gray
+              } else {
+                  Write-Host "   $var = <not set>" -ForegroundColor DarkGray
+              }
+          }
+      } catch {
+          Write-Host "   Error reading environment variables: $($_.Exception.Message)" -ForegroundColor Yellow
+      }
+      Write-Host "" -ForegroundColor Cyan
       
       # Check if setup choice is already configured
       $setupChoice = $null
       $output = azd env get-value aSetupChoice 2>&1
       if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrEmpty($output) -and -not $output.ToString().Contains("ERROR")) {
           $setupChoice = $output.ToString().Trim()
-          Write-Host "✓ Found existing setup choice: $setupChoice" -ForegroundColor Green
+          Write-Host "✓ DEBUG: Found existing setup choice: $setupChoice" -ForegroundColor Green
       } else {
           # Prompt for setup choice
           do {
@@ -91,12 +116,54 @@ hooks:
               Write-Host "✓ Set audio model: $audioModel" -ForegroundColor Green
           }
           
+          # Auto-detect AI resource details and create bicepparam file (in preprovision)
+          Write-Host "🔍 DEBUG: Auto-detecting AI resource details..." -ForegroundColor Yellow
+          $baseEndpoint = $foundryEndpoint -replace "/models$", ""
+          $aiResourceName = ($baseEndpoint -split "://")[1] -split "\." | Select-Object -First 1
+          Write-Host "   Base endpoint: $baseEndpoint" -ForegroundColor Gray
+          Write-Host "   AI resource name: $aiResourceName" -ForegroundColor Gray
+          
+          try {
+              # Find the AI resource across all accessible resource groups
+              $aiResource = az cognitiveservices account list --query "[?name=='$aiResourceName']" | ConvertFrom-Json | Select-Object -First 1
+              
+              if ($aiResource) {
+                  $aiResourceGroup = $aiResource.resourceGroup
+                  $aiSubscription = $aiResource.id -split "/" | Select-Object -Index 2
+                  
+                  Write-Host "✅ Found AI resource:" -ForegroundColor Green
+                  Write-Host "   Name: $aiResourceName" -ForegroundColor Gray
+                  Write-Host "   Resource Group: $aiResourceGroup" -ForegroundColor Gray
+                  Write-Host "   Subscription: $aiSubscription" -ForegroundColor Gray
+                  
+                  azd env set eAISubscriptionId $aiSubscription
+                  azd env set fAIResourceGroup $aiResourceGroup
+              } else {
+                  Write-Host "⚠️  Could not find AI resource '$aiResourceName'. Using fallback values." -ForegroundColor Yellow
+                  $aiResourceGroup = "niteshjain_aifoundary_rg"
+                  $aiSubscription = "1b147013-4b92-4753-90d0-35bafcd3e4c8"
+                  azd env set eAISubscriptionId $aiSubscription
+                  azd env set fAIResourceGroup $aiResourceGroup
+              }
+          } catch {
+              Write-Host "⚠️  Error looking up AI resource. Using fallback values." -ForegroundColor Yellow
+              $aiResourceGroup = "niteshjain_aifoundary_rg"
+              $aiSubscription = "1b147013-4b92-4753-90d0-35bafcd3e4c8"
+              azd env set eAISubscriptionId $aiSubscription
+              azd env set fAIResourceGroup $aiResourceGroup
+          }
+          
+          # Create Bicep parameters file NOW (in preprovision) - THIS IS THE KEY FIX!
+          $bicepParamContent = "using './main.bicep'`n`nparam aSetupChoice = '$setupChoice'`nparam bFoundryEndpoint = '$foundryEndpoint'`nparam cChatModelName = '$chatModel'`nparam dAudioModelName = '$audioModel'`nparam eAISubscriptionId = '$aiSubscription'`nparam fAIResourceGroup = '$aiResourceGroup'"
+          Set-Content -Path "infra/main.bicepparam" -Value $bicepParamContent
+          
           Write-Host ""
           Write-Host "✅ Parameters configured:" -ForegroundColor Green
           Write-Host "   Setup: $setupChoice" -ForegroundColor Cyan
           Write-Host "   Endpoint: $foundryEndpoint" -ForegroundColor Cyan
           Write-Host "   Chat Model: $chatModel" -ForegroundColor Cyan  
           Write-Host "   Audio Model: $audioModel" -ForegroundColor Cyan
+          Write-Host "   📄 Created infra/main.bicepparam (in preprovision)" -ForegroundColor Cyan
           Write-Host ""
       } else {
           # Collect model names for new deployments
@@ -169,10 +236,36 @@ hooks:
     shell: pwsh
     interactive: false
     run: |
+      Write-Host "" -ForegroundColor Cyan
+      Write-Host "=== DEBUG: POSTPROVISION HOOK START ===" -ForegroundColor Cyan
+      Write-Host "Timestamp: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" -ForegroundColor Gray
+      
+      # Debug: Show all azd environment variables
+      Write-Host "" -ForegroundColor Cyan
+      Write-Host "📊 DEBUG: Current azd environment state:" -ForegroundColor Cyan
+      try {
+          $allEnvVars = @('aSetupChoice', 'bFoundryEndpoint', 'cChatModelName', 'dAudioModelName', 'eAISubscriptionId', 'fAIResourceGroup', 'SERVICE_API_IDENTITY_PRINCIPAL_ID', 'SERVICE_API_NAME', 'AZURE_RESOURCE_GROUP', 'AZURE_INFERENCE_ENDPOINT')
+          foreach ($var in $allEnvVars) {
+              $value = azd env get-value $var 2>$null
+              if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrEmpty($value)) {
+                  if ($var -like "*Endpoint*" -or $var -like "*Id*") {
+                      Write-Host "   $var = $value" -ForegroundColor Gray
+                  } else {
+                      Write-Host "   $var = $value" -ForegroundColor Gray
+                  }
+              } else {
+                  Write-Host "   $var = <not set>" -ForegroundColor DarkGray
+              }
+          }
+      } catch {
+          Write-Host "   Error reading environment variables: $($_.Exception.Message)" -ForegroundColor Yellow
+      }
+      Write-Host "" -ForegroundColor Cyan
+      
       # Automated RBAC setup for existing AI Foundry (runs after infrastructure is deployed)
       try {
           $setupChoice = azd env get-value aSetupChoice
-          Write-Host "🔐 RBAC Setup - Setup Choice: $setupChoice" -ForegroundColor Cyan
+          Write-Host "🔐 DEBUG: RBAC Setup - Setup Choice: $setupChoice" -ForegroundColor Cyan
           
           if ($setupChoice -eq "existing") {
               Write-Host "🔐 Setting up RBAC for existing AI Foundry..." -ForegroundColor Cyan
@@ -194,11 +287,12 @@ hooks:
               Write-Host "   Scope: $scope" -ForegroundColor Green
               
               # Check if role assignment exists
-              $existing = az role assignment list --assignee $principalId --scope $scope --role "Cognitive Services OpenAI User" --query "length(@)" --output tsv
+              $existingRoles = az role assignment list --assignee $principalId --scope $scope --role "Cognitive Services OpenAI User" | ConvertFrom-Json
+              $existing = $existingRoles.Count
               
               if ($existing -eq "0") {
                   Write-Host "   Creating role assignment..." -ForegroundColor Yellow
-                  az role assignment create --role "Cognitive Services OpenAI User" --assignee $principalId --scope $scope --output none
+                  $result = az role assignment create --role "Cognitive Services OpenAI User" --assignee $principalId --scope $scope
                   Write-Host "   ✅ Role assignment created successfully" -ForegroundColor Green
               } else {
                   Write-Host "   ✅ Role assignment already exists" -ForegroundColor Green
@@ -211,86 +305,7 @@ hooks:
           Write-Host "You can manually create the role assignment later if needed." -ForegroundColor Gray
       }
       
-      # Conditional parameter collection based on setup choice
-      $configPath = ".azure/$env:AZURE_ENV_NAME/config.json"
-      
-      if (Test-Path $configPath) {
-          $config = Get-Content $configPath | ConvertFrom-Json
-          
-          # Ensure infra.parameters exists
-          if (-not $config.infra) {
-              $config | Add-Member -MemberType NoteProperty -Name "infra" -Value ([PSCustomObject]@{}) -Force
-          }
-          if (-not $config.infra.parameters) {
-              $config.infra | Add-Member -MemberType NoteProperty -Name "parameters" -Value ([PSCustomObject]@{}) -Force
-          }
-          
-          # Generate Bicep parameters file using azd environment variables (set in preprovision hook)
-          $setupChoice = azd env get-value aSetupChoice
-          Write-Host "🔧 Generating Bicep parameters from azd environment..." -ForegroundColor Cyan
-          Write-Host "   Setup Choice: $setupChoice" -ForegroundColor Gray
-          
-          if ($setupChoice -eq "existing") {
-              $endpoint = azd env get-value bFoundryEndpoint
-              $chatModel = azd env get-value cChatModelName
-              $audioModel = azd env get-value dAudioModelName
-              
-              # Extract AI resource name and find resource group automatically
-              Write-Host "🔍 Looking up AI resource details from endpoint..." -ForegroundColor Yellow
-              $baseEndpoint = $endpoint -replace "/models$", ""
-              $aiResourceName = ($baseEndpoint -split "://")[1] -split "\." | Select-Object -First 1
-              
-              try {
-                  # Find the AI resource across all accessible resource groups
-                  $aiResource = az cognitiveservices account list --query "[?name=='$aiResourceName']" | ConvertFrom-Json | Select-Object -First 1
-                  
-                  if ($aiResource) {
-                      $aiResourceGroup = $aiResource.resourceGroup
-                      $aiSubscription = $aiResource.id -split "/" | Select-Object -Index 2
-                      
-                      Write-Host "✅ Found AI resource:" -ForegroundColor Green
-                      Write-Host "   Name: $aiResourceName" -ForegroundColor Gray
-                      Write-Host "   Resource Group: $aiResourceGroup" -ForegroundColor Gray
-                      Write-Host "   Subscription: $aiSubscription" -ForegroundColor Gray
-                  } else {
-                      Write-Host "⚠️  Could not find AI resource '$aiResourceName'. Using fallback values." -ForegroundColor Yellow
-                      $aiResourceGroup = "niteshjain_aifoundary_rg"
-                      $aiSubscription = "1b147013-4b92-4753-90d0-35bafcd3e4c8"
-                  }
-              } catch {
-                  Write-Host "⚠️  Error looking up AI resource. Using fallback values." -ForegroundColor Yellow
-                  $aiResourceGroup = "niteshjain_aifoundary_rg"
-                  $aiSubscription = "1b147013-4b92-4753-90d0-35bafcd3e4c8"
-              }
-              
-              # Create Bicep parameters file (Pattern B)
-              $bicepParamContent = "using './main.bicep'`n`nparam aSetupChoice = '$setupChoice'`nparam bFoundryEndpoint = '$endpoint'`nparam cChatModelName = '$chatModel'`nparam dAudioModelName = '$audioModel'`nparam eAISubscriptionId = '$aiSubscription'`nparam fAIResourceGroup = '$aiResourceGroup'"
-              Set-Content -Path "infra/main.bicepparam" -Value $bicepParamContent
-              
-              Write-Host "✅ Parameters configured:" -ForegroundColor Green
-              Write-Host "   Setup: $setupChoice" -ForegroundColor Gray
-              Write-Host "   Endpoint: $endpoint" -ForegroundColor Gray
-              Write-Host "   Chat Model: $chatModel" -ForegroundColor Gray
-              Write-Host "   Audio Model: $audioModel" -ForegroundColor Gray
-              Write-Host "   📄 Created infra/main.bicepparam" -ForegroundColor Cyan
-              
-          } else {
-              $chatModel = azd env get-value cChatModelName
-              $audioModel = azd env get-value dAudioModelName
-              $aiLocation = azd env get-value eAILocation
-              
-              # Create Bicep parameters file (Pattern B)
-              $bicepParamContent = "using './main.bicep'`n`nparam aSetupChoice = '$setupChoice'`nparam aiLocation = '$aiLocation'`nparam bFoundryEndpoint = ''`nparam cChatModelName = '$chatModel'`nparam dAudioModelName = '$audioModel'`nparam chatModelName = '$chatModel'`nparam audioModelName = '$audioModel'"
-              Set-Content -Path "infra/main.bicepparam" -Value $bicepParamContent
-              
-              Write-Host "✅ New deployment parameters configured:" -ForegroundColor Green
-              Write-Host "   Setup: $setupChoice" -ForegroundColor Gray
-              Write-Host "   AI Location: $aiLocation" -ForegroundColor Gray
-              Write-Host "   Chat Model: $chatModel" -ForegroundColor Gray
-              Write-Host "   Audio Model: $audioModel" -ForegroundColor Gray
-              Write-Host "   📄 Created infra/main.bicepparam" -ForegroundColor Cyan
-          }
-      }
+      Write-Host "✅ Postprovision: Bicepparam file was already created in preprovision hook" -ForegroundColor Green
       
   postdeploy:
     shell: pwsh

@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Azure App Service AI Scenarios: Complete Sample with AI Foundry Integration</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; max-width: 900px; margin: 0 auto; padding: 20px; }
+        h1, h2, h3 { color: #0078d4; }
+        h1 { border-bottom: 2px solid #0078d4; padding-bottom: 10px; }
+        h2 { border-bottom: 1px solid #e1e5e9; padding-bottom: 5px; margin-top: 30px; }
+        code { background: #f6f8fa; padding: 2px 6px; border-radius: 3px; font-family: 'Consolas', 'Monaco', monospace; }
+        pre { background: #f6f8fa; padding: 16px; border-radius: 6px; overflow-x: auto; border-left: 3px solid #0078d4; }
+        blockquote { background: #fff3cd; border-left: 4px solid #ffc107; padding: 10px 15px; margin: 10px 0; }
+        .highlight { background: #e7f3ff; padding: 15px; border-radius: 6px; border-left: 4px solid #0078d4; }
+        .warning { background: #fff2f0; padding: 10px 15px; border-left: 4px solid #dc3545; border-radius: 4px; }
+        ul, ol { padding-left: 20px; }
+        li { margin-bottom: 5px; }
+        a { color: #0078d4; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        .btn { display: inline-block; padding: 8px 16px; background: #0078d4; color: white; border-radius: 4px; text-decoration: none; }
+        .btn:hover { background: #106ebe; color: white; }
+        table { border-collapse: collapse; width: 100%; margin: 15px 0; }
+        th, td { border: 1px solid #e1e5e9; padding: 8px 12px; text-align: left; }
+        th { background: #f6f8fa; font-weight: 600; }
+    </style>
+</head>
+<body>
+
+<h1>Azure App Service AI Scenarios: Complete Sample with AI Foundry Integration</h1>
+
+<p>This sample application demonstrates how to implement various AI scenarios on Azure App Service using Azure AI Foundry. It provides production-ready code that you can integrate into your existing Flask applications by copying the <code>AIPlaygroundCode</code> package and following the integration steps.</p>
+
+<div class="highlight">
+<strong>Ideal for:</strong> Developers looking to add AI capabilities to existing Flask applications, learn Azure AI Foundry integration patterns, and implement enterprise-grade AI features with minimal setup effort.
+</div>
+
+<h2>Key Scenarios Covered</h2>
+
+<ul>
+<li><strong>Conversational AI:</strong> Natural language processing with context awareness and session management</li>
+<li><strong>Reasoning Models:</strong> Advanced problem-solving capabilities with step-by-step analytical thinking</li>
+<li><strong>Structured Output:</strong> JSON-formatted responses with schema validation for system integration</li>
+<li><strong>Multimodal Processing:</strong> Image analysis and audio transcription using vision and audio models</li>
+<li><strong>Enterprise Chat:</strong> Retail-optimized AI assistant with customer service and business intelligence scenarios</li>
+</ul>
+
+<h2>Quick Start - Azure Deployment (Recommended)</h2>
+
+<h3>Prerequisites</h3>
+<ul>
+<li><a href="https://docs.microsoft.com/en-us/cli/azure/install-azure-cli">Azure CLI</a> installed</li>
+<li><a href="https://docs.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd">Azure Developer CLI (azd)</a> installed</li>
+<li>Azure subscription with contributor access</li>
+<li><strong>Optional:</strong> <a href="https://ai.azure.com">Azure AI Foundry</a> access with existing model deployments if you want to use existing endpoints:
+  <ul>
+    <li><strong>Chat/Reasoning/Image model:</strong> <code>gpt-4o-mini</code> or similar for conversational AI, reasoning, and image analysis</li>
+    <li><strong>Audio model:</strong> <code>gpt-4o-mini-audio-preview</code> or similar for audio transcription and processing</li>
+  </ul>
+</li>
+</ul>
+
+<h3>One-Command Deployment</h3>
+
+<p><strong>1. Clone and Deploy</strong></p>
+<pre><code>git clone https://github.com/Azure-Samples/azure-app-service-ai-scenarios-integrated-sample.git
+cd azure-app-service-ai-scenarios-integrated-sample
+azd up</code></pre>
+
+<p><strong>During deployment, you'll be prompted for:</strong></p>
+<ul>
+<li><strong>Azure subscription:</strong> Select your target subscription</li>
+<li><strong>Azure region:</strong> Choose deployment region (e.g., East US, West Europe)</li>
+<li><strong>Environment name:</strong> Unique name for your deployment (e.g., "myai-demo")</li>
+<li><strong>Existing Azure AI Foundry endpoint:</strong> Answer "existing" or "new" based on your setup</li>
+<li><strong>AI Resources Location:</strong> Choose the region for Azure AI Foundry resources (may differ from main deployment region for model availability)</li>
+</ul>
+
+<p><strong>2. Azure AI Foundry Integration During Deployment</strong><br>
+During <code>azd up</code>, you'll be prompted to configure AI setup:</p>
+
+<p><strong>Prompt: "Do you have an existing Azure AI Foundry endpoint?"</strong></p>
+<ul>
+<li><strong>Answer "existing":</strong> If you have existing Azure AI Foundry resources
+  <ul>
+    <li>You'll be asked to provide your endpoint URL (e.g., <code>https://myproject-abc123.eastus.models.ai.azure.com/models</code>)</li>
+    <li>Managed Identity role permissions will be automatically configured on your endpoint</li>
+    <li>You'll specify your existing model deployment names (chat model name e.g. gpt-4o-mini and audio model name e.g. gpt-4o-mini-audio-preview)</li>
+  </ul>
+</li>
+<li><strong>Answer "new":</strong> Creates new Azure AI Foundry resources automatically
+  <ul>
+    <li>Provisions new Azure AI Foundry project with required dependencies</li>
+    <li>Deploys chat and audio models with configurable names (defaults: <code>gpt-4o-mini</code> and <code>gpt-4o-mini-audio-preview</code>)</li>
+    <li>Configures Managed Identity integration and updates all required settings</li>
+  </ul>
+</li>
+</ul>
+
+<p><strong>Configuration is automatic</strong> - all environment variables and permissions are set up during deployment!</p>
+
+<p><strong>Note:</strong> You no longer need to manually configure AI settings or manage API keys - everything is handled automatically through Managed Identity integration.</p>
+
+<p><strong>3. Test Your Application</strong></p>
+<ul>
+<li>Click "🧪 Test Config" to verify connection, then start using AI scenarios!</li>
+<li>Refer to Usage Examples section below to test manually with sample scenarios</li>
+</ul>
+
+<h3>What Gets Deployed</h3>
+<ul>
+<li><strong>Azure App Service</strong> (Basic B2 SKU) with Python 3.11</li>
+<li><strong>Azure AI Foundry resources</strong> (if "new" was chosen for existing endpoint):
+  <ul>
+    <li>AI Hub with cognitive services multi-service account</li>
+    <li>AI Project workspace with model deployments (<code>gpt-4o-mini</code>, <code>gpt-4o-mini-audio-preview</code>)</li>
+    <li>Storage account for AI project data and model artifacts</li>
+  </ul>
+</li>
+<li><strong>Managed Identity Configuration</strong> (automatic for both new and existing endpoints):
+  <ul>
+    <li>System-assigned managed identity enabled on App Service</li>
+    <li>"Cognitive Services OpenAI User" role assigned to access AI endpoints</li>
+    <li>"AI Developer" role assigned for Azure AI Foundry project access</li>
+  </ul>
+</li>
+<li>All necessary environment variables configured automatically in App Service</li>
+</ul>
+
+<h2>Local Development Setup</h2>
+
+<h3>Prerequisites</h3>
+<ul>
+<li>Python 3.8+</li>
+<li><a href="https://ai.azure.com">Azure AI Foundry</a> access with model deployments (you can create new ones using <code>azd up</code> or use existing ones):
+  <ul>
+    <li><strong>Chat/Reasoning/Image model:</strong> <code>gpt-4o-mini</code> or similar for conversational AI, reasoning, and image analysis</li>
+    <li><strong>Audio model:</strong> <code>gpt-4o-mini-audio-preview</code> or similar for audio transcription and processing</li>
+  </ul>
+</li>
+</ul>
+
+<h3>Installation & Setup</h3>
+
+<p><strong>1. Install Dependencies</strong></p>
+<pre><code>pip install -r requirements.txt</code></pre>
+
+<p><strong>2. Launch Application</strong></p>
+<pre><code>python app.py</code></pre>
+
+<p><strong>3. Configure AI Settings</strong><br>
+Open http://localhost:5000/settings and configure:</p>
+<ul>
+<li><strong>Azure AI Foundry Endpoint:</strong> <code>https://your-project-name.region.models.ai.azure.com/models</code></li>
+<li><strong>API Key:</strong> Your Azure AI Foundry API key <em>(Note: For production deployment, Managed Identity is automatically configured)</em></li>
+<li><strong>Chat Model Name:</strong> Your deployed chat model name (e.g., <code>gpt-4o-mini</code>)</li>
+<li><strong>Audio Model Name:</strong> Your audio model deployment (e.g., <code>gpt-4o-mini-audio-preview</code>)</li>
+</ul>
+
+<p><strong>4. Test Your Application</strong></p>
+<ul>
+<li>Click "🧪 Test Config" to verify connection, then start using AI scenarios!</li>
+<li>Refer to Usage Examples section below to test manually with sample scenarios</li>
+</ul>
+
+<h2>Usage Examples</h2>
+
+<p><em>[Screenshot placeholder: Add application screenshot showing the main interface]</em></p>
+
+<p><strong>Getting Started:</strong> Click the floating AI chat button (bottom-right corner) to open the AI chat interface, then try these examples:</p>
+
+<p><strong>Conversational AI:</strong></p>
+<ul>
+<li><strong>Test Message:</strong> "Who are you and what can you help with?"</li>
+<li><strong>Expected Response:</strong> AI identifies as Enterprise AI Assistant, explains customer service and business intelligence capabilities</li>
+</ul>
+
+<p><strong>Product Inquiry:</strong></p>
+<ul>
+<li><strong>Test Message:</strong> "Tell me about features and price for Pro Gaming X1"</li>
+</ul>
+
+<p><strong>Customer Service:</strong></p>
+<ul>
+<li><strong>Test Message:</strong> "What is the return policy and how do I process a customer refund?"</li>
+</ul>
+
+<p><strong>Multimodal Processing:</strong></p>
+<ul>
+<li><strong>Image Analysis:</strong>
+  <ul>
+    <li><strong>Test Message:</strong> "Analyze this laptop and tell me its specifications"</li>
+    <li><strong>Action:</strong> Upload product images from <code>tests/test_inputs/laptop.jpeg</code> using the 📎 button</li>
+  </ul>
+</li>
+<li><strong>Audio Processing:</strong>
+  <ul>
+    <li><strong>Test Message:</strong> "Transcribe this customer service call"</li>
+    <li><strong>Action:</strong> Upload audio files from <code>tests/test_inputs/test_customer_service_audio.mp3</code> using the 📎 button</li>
+  </ul>
+</li>
+</ul>
+
+<p><strong>Sample Test Files Available:</strong> Browse <code>tests/test_inputs/</code> folder for sample images and audio files to test multimodal capabilities.</p>
+
+<h2>Integration with Existing Applications</h2>
+
+<p>This section provides guidance for integrating AI capabilities into your existing Flask applications. Note that this requires additional Azure resource setup and dependency management.</p>
+
+<h3>Prerequisites for Integration</h3>
+<ul>
+<li>Azure AI Foundry endpoint with model deployments:
+  <ul>
+    <li>Chat/reasoning/image model (e.g., <code>gpt-4o-mini</code>)</li>
+    <li>Audio model (e.g., <code>gpt-4o-mini-audio-preview</code>)</li>
+  </ul>
+</li>
+</ul>
+
+<h3>Step 1: Set Up Azure Resources</h3>
+
+<p><strong>Configure App Service Managed Identity for Azure AI Foundry:</strong></p>
+<pre><code># Enable system-assigned managed identity for your App Service
+az webapp identity assign --name &lt;your-app-name&gt; --resource-group &lt;your-rg&gt;
+
+# Grant required roles to your App Service for Azure AI Foundry access
+az role assignment create \
+  --role "Cognitive Services OpenAI User" \
+  --assignee &lt;managed-identity-principal-id&gt; \
+  --scope &lt;your-ai-foundry-resource-id&gt;
+
+# Grant AI Developer role for Azure AI Foundry project access  
+az role assignment create \
+  --role "Azure AI Developer" \
+  --assignee &lt;managed-identity-principal-id&gt; \
+  --scope &lt;your-ai-foundry-resource-id&gt;</code></pre>
+
+<h3>Step 2: Copy and Merge Files</h3>
+
+<p><strong>Copy the AIPlaygroundCode folder:</strong></p>
+<pre><code>cp -r AIPlaygroundCode/ /path/to/your-existing-app/</code></pre>
+
+<p><strong>Merge Dependencies (Important!):</strong></p>
+<ul>
+<li><strong>requirements.txt:</strong> Merge the dependencies from this sample's <code>requirements.txt</code> with your existing requirements file</li>
+<li><strong>wsgi.py:</strong> If you have an existing <code>wsgi.py</code>, ensure it properly references your Flask app instance</li>
+<li><strong>app.py routes:</strong> Copy the AI-related routes from the sample <code>app.py</code> to your existing Flask application</li>
+</ul>
+
+<p><strong>Example requirements.txt merge:</strong></p>
+<pre><code># Your existing dependencies
+flask==2.3.3
+# ... your other dependencies
+
+# Add these AI-related dependencies from the sample
+azure-identity==1.15.0
+openai==1.35.13
+pillow==10.0.0
+pydub==0.25.1</code></pre>
+
+<h3>Step 3: Update App Service Configuration</h3>
+
+<p><strong>Add AI configuration as App Service environment variables:</strong></p>
+<pre><code># Add Azure AI Foundry configuration as App Service environment variables
+az webapp config appsettings set --name &lt;your-app-name&gt; --resource-group &lt;your-rg&gt; --settings \
+  AZURE_INFERENCE_ENDPOINT="https://your-project-name.region.models.ai.azure.com/models" \
+  AZURE_AI_CHAT_DEPLOYMENT_NAME="gpt-4o-mini" \
+  AZURE_AI_AUDIO_DEPLOYMENT_NAME="gpt-4o-mini-audio-preview" \
+  AZURE_CLIENT_ID="system-assigned-managed-identity"</code></pre>
+
+<h3>Step 4: Add AI Settings Route to Your Flask App</h3>
+
+<p>Add the settings route to your existing Flask application:</p>
+<pre><code># Add these imports to your existing app.py
+from AIPlaygroundCode.config import get_model_config, update_model_config, is_configured
+
+# Add AI configuration routes
+@app.route('/settings')
+def settings():
+    from flask import render_template
+    config = get_model_config()
+    return render_template('AIPlaygroundCode/templates/settings.html', config=config)
+
+@app.route('/settings', methods=['POST'])
+def update_settings():
+    # Copy the complete settings update logic from the sample app.py
+    # This includes form handling, validation, and configuration updates
+    pass</code></pre>
+
+<h3>Step 5: Add AI Interface to Your Application</h3>
+
+<p>Integrate the AI chat interface into your existing application pages by copying specific sections from <code>AIPlaygroundCode/templates/retail_home.html</code>:</p>
+
+<p><strong>Look for these markers in retail_home.html and copy to your templates:</strong></p>
+
+<p><strong>1. HTML Structure</strong> (copy the section marked with <code>&lt;!-- AI Chat Interface Start --&gt;</code>):</p>
+<pre><code>&lt;!-- AI Chat Interface Start --&gt;
+&lt;div id="chat-popup" class="chat-popup"&gt;
+    &lt;!-- Complete chat popup structure --&gt;
+&lt;/div&gt;
+&lt;!-- AI Chat Interface End --&gt;</code></pre>
+
+<p><strong>2. CSS Styles</strong> (copy the section marked with <code>/* AI Chat Styles Start */</code>):</p>
+<pre><code>&lt;style&gt;
+/* AI Chat Styles Start */
+.chat-popup { /* ... */ }
+/* AI Chat Styles End */
+&lt;/style&gt;</code></pre>
+
+<p><strong>3. JavaScript Functions</strong> (copy the section marked with <code>// AI Chat JavaScript Start</code>):</p>
+<pre><code>&lt;script&gt;
+// AI Chat JavaScript Start
+function toggleChat() { /* ... */ }
+// AI Chat JavaScript End
+&lt;/script&gt;</code></pre>
+
+<p><strong>Integration Steps:</strong></p>
+<ul>
+<li>Copy each marked section from <code>retail_home.html</code> to your main application template</li>
+<li>Ensure the chat button appears on your pages (floating bottom-right)</li>
+<li>Test the chat interface opens and can send messages</li>
+<li>Verify file upload functionality works for multimodal features</li>
+</ul>
+
+<h4>What You Get After Integration:</h4>
+<ul>
+<li><strong>New Route:</strong> <code>/settings</code> for AI configuration</li>
+<li><strong>Settings Page:</strong> Self-service configuration interface for Azure AI Foundry endpoints</li>
+<li><strong>AI Chat Interface:</strong> Integrated chat functionality within your application pages</li>
+<li><strong>Secure Configuration:</strong> Managed Identity authentication with Azure AI Foundry (no API keys required)</li>
+</ul>
+
+<h2>Resource Clean-up</h2>
+
+<p>To prevent incurring unnecessary charges, it's important to clean up your Azure resources after completing your work with the application.</p>
+
+<h3>When to Clean Up</h3>
+<ul>
+<li>After you have finished testing or demonstrating the application</li>
+<li>If the application is no longer needed or you have transitioned to a different project</li>
+<li>When you have completed development and are ready to decommission the application</li>
+</ul>
+
+<h3>Removing Azure Resources</h3>
+<p>To delete all associated resources and shut down the application, execute the following command:</p>
+<pre><code>azd down</code></pre>
+<p>Please note that this process may take up to 10 minutes to complete.</p>
+
+<p><strong>Alternative:</strong> You can delete the resource group directly from the Azure Portal to clean up resources.</p>
+
+<hr>
+
+<h2>FAQ & Troubleshooting</h2>
+
+<h3><strong>Q: How do I add AI to my existing Flask application?</strong></h3>
+<p><strong>A:</strong> See the <a href="#integration-with-existing-applications">Integration with Existing Applications</a> section above for step-by-step instructions.</p>
+
+<h3><strong>Q: What Azure AI models are supported?</strong></h3>
+<p><strong>A:</strong> All Azure AI Foundry models including chat, reasoning, and multimodal models. Configure your deployed model name in settings.</p>
+
+<h3><strong>Q: How do I enable multimodal capabilities?</strong></h3>
+<p><strong>A:</strong> Enable "Multimodal" in <code>/settings</code> and ensure your model supports vision/audio (like gpt-4o, phi-4-multimodal). Upload images/audio via the 📎 button.</p>
+
+<h3><strong>Q: How do I use reasoning model capabilities?</strong></h3>
+<p><strong>A:</strong> Enable "Reasoning" in <code>/settings</code> and use reasoning-capable models. These models provide advanced problem-solving and step-by-step reasoning. Set "Reasoning Effort" to control depth (low/medium/high) and enable "Show Reasoning" to see the thinking process.</p>
+
+<h3><strong>Q: How do I use structured input/output capabilities?</strong></h3>
+<p><strong>A:</strong> Enable "Structured Output" in <code>/settings</code>, set "Response Format" to "JSON", and define a JSON schema in the "JSON Schema" field. The AI will return responses matching your specified schema structure, perfect for system integration and data processing workflows.</p>
+
+<h3><strong>Q: Do I need API keys for Azure deployment?</strong></h3>
+<p><strong>A:</strong> No! When deployed to Azure using <code>azd up</code>, the application automatically uses Managed Identity for secure authentication with Azure AI Foundry. API keys are only needed for local development testing.</p>
+
+<h3>Troubleshooting Common Deployment Issues</h3>
+
+<p><strong>"Endpoint not found" or 401 Authentication errors:</strong></p>
+<ul>
+<li>Verify your Azure AI Foundry endpoint URL format: <code>https://your-project-name.region.models.ai.azure.com/models</code></li>
+<li>Ensure Managed Identity has proper permissions:
+  <ul>
+    <li>"Cognitive Services OpenAI User" role for model access</li>
+    <li>"Azure AI Developer" role for project access</li>
+  </ul>
+</li>
+<li>Use the "🧪 Test Config" button to validate connection</li>
+<li>Check that your model deployments are active in Azure AI Foundry</li>
+<li>Verify <code>AZURE_USE_MANAGED_IDENTITY=true</code> is set in App Service configuration</li>
+</ul>
+
+<p><strong>Azure deployment fails with "azd up" command:</strong></p>
+<ul>
+<li>Ensure you have Contributor access to your Azure subscription</li>
+<li>Check if you've reached subscription limits for App Service or AI services</li>
+<li>Try running <code>azd auth login</code> to refresh your authentication</li>
+<li>Clear previous deployments with <code>azd down</code> before retrying</li>
+</ul>
+
+<p><strong>Application not starting after deployment:</strong></p>
+<ul>
+<li>Check App Service logs in Azure portal for detailed errors (under Monitoring > Log stream)</li>
+<li>Verify Managed Identity permissions are properly configured for Azure AI Foundry resources</li>
+<li>Ensure all required Azure AI Foundry environment variables are set in App Service Configuration</li>
+<li>Review deployment logs for any missing dependencies or configuration issues</li>
+<li>Check that Azure AI Foundry project and model deployments are active</li>
+</ul>
+
+<p><strong>"ModuleNotFoundError" or dependency issues:</strong></p>
+<ul>
+<li>Verify all files from <code>requirements.txt</code> were properly deployed</li>
+<li>Check Python version compatibility (requires Python 3.8+)</li>
+<li>Review deployment logs in Azure App Service for package installation errors</li>
+</ul>
+
+<p><strong>File upload failures (multimodal scenarios):</strong></p>
+<ul>
+<li>Check file size limits (images: 5MB, audio: 10MB by default)</li>
+<li>Verify supported file formats (JPEG, PNG for images; MP3, WAV for audio)</li>
+<li>Ensure "Enable Multimodal" is checked in settings</li>
+<li>Confirm your model supports multimodal capabilities</li>
+</ul>
+
+<h3>Integration-Specific Troubleshooting</h3>
+
+<p><strong>"Managed Identity permissions" errors after integration:</strong></p>
+<ul>
+<li><strong>Cause:</strong> Step 1 (Azure Resources Setup) not completed properly</li>
+<li><strong>Symptoms:</strong> 403 Forbidden errors when accessing AI endpoints</li>
+<li><strong>Solution:</strong> Verify managed identity roles are assigned correctly using <code>az role assignment list</code></li>
+</ul>
+
+<p><strong>"AIPlaygroundCode module not found" errors:</strong></p>
+<ul>
+<li><strong>Cause:</strong> Step 2 (Copy and Merge Files) incomplete</li>
+<li><strong>Symptoms:</strong> ImportError or ModuleNotFoundError when starting application</li>
+<li><strong>Solution:</strong> Ensure <code>AIPlaygroundCode</code> folder is copied to your application root and dependencies are merged</li>
+</ul>
+
+<p><strong>"AZURE_INFERENCE_ENDPOINT not set" configuration errors:</strong></p>
+<ul>
+<li><strong>Cause:</strong> Step 3 (App Service Configuration) not completed</li>
+<li><strong>Symptoms:</strong> Configuration errors on <code>/settings</code> page, "Test Config" button fails</li>
+<li><strong>Solution:</strong> Verify environment variables are set in App Service Configuration blade</li>
+</ul>
+
+<p><strong>"/settings route not found" (404 errors):</strong></p>
+<ul>
+<li><strong>Cause:</strong> Step 4 (Add AI Routes) not implemented</li>
+<li><strong>Symptoms:</strong> 404 Not Found when navigating to <code>/settings</code></li>
+<li><strong>Solution:</strong> Add the settings routes to your Flask application and restart</li>
+</ul>
+
+<p><strong>Chat interface not appearing on pages:</strong></p>
+<ul>
+<li><strong>Cause:</strong> Step 5 (Add AI Interface) not completed properly</li>
+<li><strong>Symptoms:</strong> No chat interface visible, JavaScript errors in browser console</li>
+<li><strong>Solution:</strong> Copy complete HTML, CSS, and JavaScript from <code>retail_home.html</code> to your templates</li>
+</ul>
+
+<p><strong>"Template not found" errors for settings page:</strong></p>
+<ul>
+<li><strong>Cause:</strong> Templates path not configured correctly</li>
+<li><strong>Symptoms:</strong> Jinja2 TemplateNotFound error when accessing <code>/settings</code></li>
+<li><strong>Solution:</strong> Ensure Flask can find <code>AIPlaygroundCode/templates/settings.html</code> or update template path</li>
+</ul>
+
+<hr>
+
+<h2>Guidance</h2>
+
+<h3>Costs</h3>
+<p>Pricing varies per region and usage, so it isn't possible to predict exact costs for your usage. The majority of Azure resources used in this infrastructure are on usage-based pricing tiers.</p>
+
+<p>You can try the <a href="https://azure.microsoft.com/pricing/calculator">Azure pricing calculator</a> for the resources:</p>
+
+<p><strong>Core Resources (always deployed):</strong></p>
+<ul>
+<li><strong>Azure App Service:</strong> Basic B2 tier with 3.5 GB RAM, 10 GB storage. <a href="https://azure.microsoft.com/pricing/details/app-service/windows/">Pricing</a></li>
+</ul>
+
+<p><strong>Azure AI Foundry Resources (deployed when "No" is chosen for existing endpoint):</strong></p>
+<ul>
+<li><strong>Azure AI Services:</strong> Multi-service account with consumption-based pricing for model usage (tokens). <a href="https://azure.microsoft.com/pricing/details/cognitive-services/openai-service/">Pricing</a></li>
+<li><strong>Azure AI Hub:</strong> Management layer for AI projects (minimal cost)</li>
+<li><strong>Azure Storage Account:</strong> Standard LRS for AI project data and model artifacts (minimal cost). <a href="https://azure.microsoft.com/pricing/details/storage/">Pricing</a></li>
+</ul>
+
+<p><strong>Cost-saving tip:</strong> Choose "Yes" when prompted about existing Azure AI Foundry endpoint to reuse existing resources and avoid duplicate charges.</p>
+
+<p><strong>Cost Management:</strong> To avoid unnecessary costs, remember to clean up your resources when no longer needed by running <code>azd down</code> or deleting the resource group in the Azure Portal.</p>
+
+<h3>Security Guidelines</h3>
+<p>This template uses <a href="https://learn.microsoft.com/entra/identity/managed-identities-azure-resources/overview">Managed Identity</a> for secure authentication between Azure services.</p>
+
+<p><strong>Additional Security Measures to Consider:</strong></p>
+<ul>
+<li>Enable <a href="https://learn.microsoft.com/azure/defender-for-cloud/">Microsoft Defender for Cloud</a> to secure your Azure resources</li>
+<li>Implement network security with <a href="https://learn.microsoft.com/azure/app-service/networking-features">Virtual Networks</a> for App Service</li>
+<li>Configure <a href="https://learn.microsoft.com/azure/web-application-firewall/">Azure Web Application Firewall</a> for additional protection</li>
+<li>Enable <a href="https://docs.github.com/code-security/secret-scanning/about-secret-scanning">GitHub secret scanning</a> in your repository</li>
+</ul>
+
+<blockquote>
+<p><strong>Important Security Notice</strong><br>
+This template has been built to showcase Azure AI services and tools. We strongly recommend implementing additional security features before using this code in production environments.</p>
+</blockquote>
+
+<p>For comprehensive security best practices for AI applications, visit our <a href="https://learn.microsoft.com/azure/ai-foundry/">official documentation</a>.</p>
+
+<hr>
+
+<h2>Disclaimers</h2>
+
+<p><strong>Software Usage and Compliance:</strong><br>
+To the extent that this software includes components or code used in or derived from Microsoft products or services, including Microsoft Azure Services, you must comply with the Product Terms applicable to such Microsoft Products and Services. Nothing in this license will serve to supersede, amend, terminate, or modify any terms in the Product Terms for any Microsoft Products and Services.</p>
+
+<p><strong>Export Regulations:</strong><br>
+You must comply with all domestic and international export laws and regulations that apply to the software, which include restrictions on destinations, end users, and end use. For further information on export restrictions, visit <a href="https://aka.ms/exporting">https://aka.ms/exporting</a>.</p>
+
+<p><strong>Medical and Financial Services Disclaimer:</strong><br>
+This software is not designed, intended, or made available as a medical device, and should not be used as a substitute for professional medical advice, diagnosis, treatment, or judgment. Similarly, it is not intended as a substitute for professional financial advice or judgment.</p>
+
+<p><strong>High-Risk Use:</strong><br>
+BY ACCESSING OR USING THE SOFTWARE, YOU ACKNOWLEDGE THAT THE SOFTWARE IS NOT DESIGNED OR INTENDED TO SUPPORT ANY USE IN WHICH A SERVICE INTERRUPTION, DEFECT, ERROR, OR OTHER FAILURE COULD RESULT IN DEATH OR SERIOUS BODILY INJURY OF ANY PERSON OR IN PHYSICAL OR ENVIRONMENTAL DAMAGE. YOUR HIGH-RISK USE OF THE SOFTWARE IS AT YOUR OWN RISK.</p>
+
+<hr>
+
+<h2>Support and Feedback</h2>
+
+<ul>
+<li><strong>Issues:</strong> Report bugs or request features via <a href="https://github.com/Azure-Samples/azure-app-service-ai-scenarios-integrated-sample/issues">GitHub Issues</a></li>
+<li><strong>Questions:</strong> Use <a href="https://github.com/Azure-Samples/azure-app-service-ai-scenarios-integrated-sample/discussions">GitHub Discussions</a> for implementation questions</li>
+<li><strong>Rate the Sample:</strong> Star the <a href="https://github.com/Azure-Samples/azure-app-service-ai-scenarios-integrated-sample">repository</a> if this helped your project</li>
+</ul>
+
+<hr>
+
+<h2>References</h2>
+
+<h3><strong>Implementation Guides</strong></h3>
+<ul>
+<li><strong><a href="https://github.com/Azure-Samples/azure-app-service-ai-scenarios-integrated-sample">GitHub Repository</a></strong> - Complete implementation guide and source code</li>
+<li><strong><a href="https://github.com/Azure-Samples/azure-app-service-ai-scenarios-integrated-sample/blob/main/docs/PROJECT_STRUCTURE.md">Project Structure</a></strong> - Learn the high-level constructs and architecture</li>
+<li><strong><a href="https://github.com/Azure-Samples/azure-app-service-ai-scenarios-integrated-sample/blob/main/docs/CONFIGURATION_GUIDE.md">Configuration Guide</a></strong> - Understand configuration options and environment setup</li>
+<li><strong><a href="https://github.com/Azure-Samples/azure-app-service-ai-scenarios-integrated-sample/blob/main/docs/TESTING_GUIDE.md">Testing Guide</a></strong> - Learn how to test the application locally and on Azure</li>
+</ul>
+
+<h3><strong>Azure AI Foundry Documentation</strong></h3>
+<ul>
+<li><strong><a href="https://learn.microsoft.com/en-us/azure/ai-foundry/foundry-models/how-to/use-chat-completions?tabs=python">Chat Completions</a></strong> - Basic conversational AI implementation</li>
+<li><strong><a href="https://learn.microsoft.com/en-us/azure/ai-foundry/foundry-models/how-to/use-chat-reasoning?tabs=openai&pivots=programming-language-python">Reasoning Models</a></strong> - Advanced reasoning capabilities</li>
+<li><strong><a href="https://learn.microsoft.com/en-us/azure/ai-foundry/foundry-models/how-to/use-chat-multi-modal?pivots=programming-language-python">Multimodal AI</a></strong> - Image and audio processing</li>
+<li><strong><a href="https://learn.microsoft.com/en-us/azure/ai-foundry/foundry-models/how-to/use-structured-outputs?pivots=programming-language-python">Structured Outputs</a></strong> - JSON schema validation</li>
+</ul>
+
+<hr>
+
+<div class="highlight">
+<strong>Ready to implement AI scenarios in your application? Start with the Quick Start guide above!</strong>
+</div>
+
+</body>
+</html>

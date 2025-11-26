@@ -21,7 +21,7 @@ param principalId string = ''
 // User Configuration Options - Parameters populated by azd from environment variables
 // These are set by the preprovision hook in azure.yaml and passed via main.parameters.json
 @description('Choose: new (create AI services) or existing (use your AI Foundry project)')
-param aSetupChoice string = ''
+param aSetupChoice string = 'new'
 
 @description('Your existing AI Foundry project endpoint URL (collected conditionally)')
 param bFoundryEndpoint string = ''
@@ -58,13 +58,12 @@ param enableManagedIdentity bool = true
 
 // Computed values - Handle conditional parameters
 var shouldProvisionNewAI = aSetupChoice == 'new'
-var shouldUseExistingAI = aSetupChoice == 'existing' && !empty(bFoundryEndpoint)
 
 // Extract AI account name from endpoint URL and construct resource ID (only for existing AI)
 // User provides complete endpoint with /models, so we extract the base URL for account name
-var baseEndpointForName = shouldUseExistingAI ? replace(bFoundryEndpoint, '/models', '') : ''
-var aiAccountName = shouldUseExistingAI ? split(split(baseEndpointForName, '://')[1], '.')[0] : ''
-var computedAIResourceId = shouldUseExistingAI ? '/subscriptions/${existingAISubscriptionId}/resourceGroups/${existingAIResourceGroupName}/providers/Microsoft.CognitiveServices/accounts/${aiAccountName}' : ''
+var baseEndpointForName = !shouldProvisionNewAI ? replace(bFoundryEndpoint, '/models', '') : ''
+var aiAccountName = !shouldProvisionNewAI ? split(split(baseEndpointForName, '://')[1], '.')[0] : ''
+var computedAIResourceId = !shouldProvisionNewAI ? '/subscriptions/${existingAISubscriptionId}/resourceGroups/${existingAIResourceGroupName}/providers/Microsoft.CognitiveServices/accounts/${aiAccountName}' : ''
 
 // Model deployment names (no fallbacks - require explicit parameters)
 var effectiveChatModelName = shouldProvisionNewAI ? chatModelName : cChatModelName
@@ -135,7 +134,7 @@ param enableMultiServiceAI bool = true
 
 
 // Computed values based on user choices and legacy parameters
-var shouldEnableAI = shouldProvisionNewAI || shouldUseExistingAI
+var shouldEnableAI = true  // Always enable AI (either new or existing)
 
 // AI Resource variables are now handled directly in the module calls
 // useApplicationInsights parameter usage removed for simplicity
@@ -160,7 +159,7 @@ var aiChatModel = [
     name: effectiveChatDeploymentName
     model: {
       format: chatModelFormat
-      name: chatModelName
+      name: effectiveChatModelName
       version: chatModelVersion
     }
     sku: {
@@ -175,7 +174,7 @@ var aiAudioModel = [
     name: effectiveAudioModelName
     model: {
       format: audioModelFormat
-      name: audioModelName
+      name: effectiveAudioModelName
       version: audioModelVersion
     }
     sku: {
@@ -190,8 +189,8 @@ var aiAudioModel = [
 var dualModelSupportedRegions = ['eastus', 'eastus2', 'swedencentral']
 var isDualModelSupported = contains(dualModelSupportedRegions, aiLocation)
 
-// Deploy both chat and audio models in supported regions
-var aiDeployments = isDualModelSupported ? union(aiChatModel, aiAudioModel) : aiChatModel
+// Deploy both chat and audio models in supported regions (only for new AI)
+var aiDeployments = shouldProvisionNewAI ? (isDualModelSupported ? union(aiChatModel, aiAudioModel) : aiChatModel) : []
 
 // Add validation message for unsupported regions
 output deploymentWarning string = isDualModelSupported ? 'Both models deployed successfully' : 'Audio model skipped - unsupported region. Use swedencentral for full support.'
@@ -212,7 +211,6 @@ module ai 'core/host/ai-environment.bicep' = if (shouldProvisionNewAI) {
     aiServicesName: !empty(aiServicesName) ? aiServicesName : '${environmentName}-ai'
     storageAccountName: !empty(storageAccountName) ? storageAccountName : '${replace(environmentName, '-', '')}st'
     aiServiceModelDeployments: aiDeployments
-    appInsightConnectionName: 'appinsight-connection'
     enableMultiServiceAI: enableMultiServiceAI
   }
 }
@@ -258,7 +256,7 @@ module api 'api.bicep' = {
     appServicePlanId: appServicePlan.outputs.id
     enableAIServices: shouldEnableAI
     enableManagedIdentity: enableManagedIdentity
-    aiFoundryEndpoint: shouldUseExistingAI ? bFoundryEndpoint : ''
+    aiFoundryEndpoint: shouldProvisionNewAI ? ai!.outputs.endpoint : bFoundryEndpoint
     chatDeploymentName: effectiveChatDeploymentName
     audioDeploymentName: effectiveAudioModelName
   }
@@ -269,8 +267,8 @@ module api 'api.bicep' = {
 
 // Key Vault secrets module archived - using environment variables
 
-// User roles
-module userRoleAzureAIDeveloper 'core/security/role.bicep' = if (shouldEnableAI && !empty(principalId)) {
+// User roles - resource group level access for development
+module userRoleAzureAIDeveloper 'core/security/role-resourcegroup.bicep' = if (shouldEnableAI && !empty(principalId)) {
   name: 'user-role-azureai-developer'
   params: {
     principalType: runnerPrincipalType
@@ -281,23 +279,26 @@ module userRoleAzureAIDeveloper 'core/security/role.bicep' = if (shouldEnableAI 
 
 // Search service role assignments archived - search functionality removed
 
-// App principal access to AI services (for new AI services)
-module apiRoleAzureAIDeveloper 'core/security/role.bicep' = if (shouldProvisionNewAI && enableManagedIdentity) {
-  name: 'api-role-azureai-developer'
+// RBAC assignment for App Service MI to newly provisioned AI resource
+module newAiServiceRoleAssignment 'core/security/role.bicep' = if (enableManagedIdentity && shouldProvisionNewAI) {
+  name: 'new-ai-service-role-assignment'
   params: {
     principalType: 'ServicePrincipal'
     principalId: api.outputs.SERVICE_API_IDENTITY_PRINCIPAL_ID
-    roleDefinitionId: '64702f94-c441-49e6-a78b-ef80e0188fee'
+    roleDefinitionId: '64702f94-c441-49e6-a78b-ef80e0188fee'  // Azure AI Developer
+    targetResourceId: ai!.outputs.resourceId
   }
 }
 
-// RBAC setup for existing AI Foundry (automated via deployment script)
-module existingAIRbacInstructions 'core/ai/existing-ai-rbac.bicep' = if (shouldUseExistingAI && enableManagedIdentity) {
-  name: 'existing-ai-rbac-instructions'
+// RBAC assignment for App Service MI to existing AI resource
+module existingAiServiceRoleAssignment 'core/security/role.bicep' = if (enableManagedIdentity && !shouldProvisionNewAI) {
+  name: 'existing-ai-service-role-assignment'
   scope: resourceGroup(existingAISubscriptionId, existingAIResourceGroupName)
   params: {
-    aiFoundryResourceId: computedAIResourceId
-    appServicePrincipalId: api.outputs.SERVICE_API_IDENTITY_PRINCIPAL_ID
+    principalType: 'ServicePrincipal'
+    principalId: api.outputs.SERVICE_API_IDENTITY_PRINCIPAL_ID
+    roleDefinitionId: '64702f94-c441-49e6-a78b-ef80e0188fee'  // Azure AI Developer
+    targetResourceId: computedAIResourceId
   }
 }
 
@@ -305,12 +306,38 @@ module existingAIRbacInstructions 'core/ai/existing-ai-rbac.bicep' = if (shouldU
 
 // Key Vault user role archived
 
-// Debug Outputs - Track deployment flow
+// Debug Outputs - Track deployment flow and parameter validation
 output DEBUG_PARAMETERS object = {
+  // Input Parameters Debug
+  aSetupChoice: aSetupChoice
+  shouldProvisionNewAI: shouldProvisionNewAI
+  bFoundryEndpoint: bFoundryEndpoint
+  cChatModelName: cChatModelName
+  dAudioModelName: dAudioModelName
+  eAISubscriptionId: eAISubscriptionId
+  fAIResourceGroup: fAIResourceGroup
+  
+  // Computed Values Debug
+  existingAISubscriptionId: existingAISubscriptionId
+  existingAIResourceGroupName: existingAIResourceGroupName
+  effectiveChatModelName: effectiveChatModelName
+  effectiveAudioModelName: effectiveAudioModelName
+  
+  // Authentication Debug
   enableManagedIdentity: enableManagedIdentity
   principalIdProvided: !empty(principalId)
   principalIdLength: length(principalId)
+  principalId: principalId
+  
+  // Legacy Parameter Debug
   externalAzureAIEndpointProvided: !empty(externalAzureAIEndpoint)
+  externalAzureAIEndpoint: externalAzureAIEndpoint
+  
+  // Environment Debug
+  location: location
+  aiLocation: aiLocation
+  environmentName: environmentName
+  resourceToken: resourceToken
 }
 
 // Resource Naming Debug - Show what names will be used
@@ -325,14 +352,67 @@ output DEBUG_RESOURCE_NAMES object = {
   storageAccountName: !empty(storageAccountName) ? storageAccountName : '${abbrs.storageStorageAccounts}${resourceToken}'
 }
 
+// Debug Conditional Logic and Resource ID Construction
+output DEBUG_CONDITIONAL_LOGIC object = {
+  // Setup Choice Logic
+  aSetupChoiceRaw: aSetupChoice
+  shouldProvisionNewAI: shouldProvisionNewAI
+  shouldProvisionNewAIExpression: 'aSetupChoice == "new" = ${aSetupChoice == 'new'}'
+  
+  // Existing AI Resource Construction
+  bFoundryEndpointRaw: bFoundryEndpoint
+  baseEndpointForName: baseEndpointForName
+  aiAccountName: aiAccountName
+  computedAIResourceId: computedAIResourceId
+  
+  // Model Name Resolution
+  chatModelNameFromBicep: chatModelName
+  chatModelNameFromUser: cChatModelName
+  effectiveChatResult: effectiveChatModelName
+  audioModelNameFromBicep: audioModelName
+  audioModelNameFromUser: dAudioModelName
+  effectiveAudioResult: effectiveAudioModelName
+  
+  // AI Location and Deployment Logic
+  aiLocationUsed: aiLocation
+  isDualModelSupported: isDualModelSupported
+  dualModelSupportedRegions: dualModelSupportedRegions
+  aiDeploymentsCount: length(aiDeployments)
+}
+
 output DEBUG_AI_FOUNDRY_DEPLOYMENT object = {
   aiFoundryMode: aSetupChoice
   shouldProvisionNewAI: shouldProvisionNewAI
-  shouldUseExistingAI: shouldUseExistingAI
   existingEndpoint: bFoundryEndpoint
   existingResourceId: computedAIResourceId
   configurationMethod: 'direct-environment-variables'
-  rbacInstructions: shouldUseExistingAI ? 'Check existingAIRbacInstructions module output' : 'Auto-configured for new AI services'
+  rbacInstructions: !shouldProvisionNewAI ? 'Existing AI RBAC via existingAiServiceRoleAssignment module' : 'New AI RBAC via newAiServiceRoleAssignment module'
+  
+  // Module Deployment Debug
+  aiModuleWillDeploy: shouldProvisionNewAI
+  newAiRoleAssignmentWillDeploy: enableManagedIdentity && shouldProvisionNewAI
+  existingAiRoleAssignmentWillDeploy: enableManagedIdentity && !shouldProvisionNewAI
+  userRoleAssignmentWillDeploy: shouldEnableAI && !empty(principalId)
+}
+
+// Debug Endpoint Resolution
+output DEBUG_ENDPOINTS object = {
+  // Endpoint Logic Debug
+  shouldProvisionNewAI: shouldProvisionNewAI
+  bFoundryEndpointInput: bFoundryEndpoint
+  
+  // API Module Endpoint Parameter
+  apiModuleEndpointParam: shouldProvisionNewAI ? 'ai!.outputs.endpoint' : bFoundryEndpoint
+  
+  // Output Endpoint Resolution
+  azureInferenceEndpointLogic: shouldProvisionNewAI ? 'ai!.outputs.endpoint' : bFoundryEndpoint
+  
+  // Expected Endpoint Format Examples
+  expectedNewAIFormat: 'https://[env-name]-ai.openai.azure.com/openai/models'
+  expectedExistingFormat: 'https://[project-name].openai.azure.com/models'
+  
+  // Conditional Module Status
+  aiModuleExists: shouldProvisionNewAI ? 'YES (will be deployed)' : 'NO (condition false)'
 }
 
 // Outputs
@@ -344,7 +424,7 @@ output AZURE_TENANT_ID string = tenant().tenantId
 output AZURE_AI_CHAT_DEPLOYMENT_NAME string = shouldEnableAI ? effectiveChatDeploymentName : ''
 // Search-related outputs archived - search functionality removed
 output AZURE_AI_SEARCH_ENDPOINT string = ''
-output AZURE_INFERENCE_ENDPOINT string = shouldUseExistingAI ? bFoundryEndpoint : ''
+output AZURE_INFERENCE_ENDPOINT string = shouldProvisionNewAI ? ai!.outputs.endpoint : bFoundryEndpoint
 output AZURE_AI_AUDIO_DEPLOYMENT_NAME string = shouldEnableAI ? effectiveAudioModelName : ''
 
 // Key Vault outputs archived

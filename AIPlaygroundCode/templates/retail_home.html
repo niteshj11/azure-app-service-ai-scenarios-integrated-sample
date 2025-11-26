@@ -295,7 +295,30 @@
             flex: 1;
             padding: 20px;
             overflow-y: auto;
+            overflow-x: hidden;
             background: #f8f9fa;
+            max-height: 350px; /* Explicit height constraint */
+            min-height: 200px;
+            scroll-behavior: smooth;
+        }
+        
+        /* Ensure scrollbar is always visible when needed */
+        .chat-popup-messages::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .chat-popup-messages::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 3px;
+        }
+        
+        .chat-popup-messages::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 3px;
+        }
+        
+        .chat-popup-messages::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
         }
 
         .message {
@@ -499,17 +522,7 @@
 
         let isOpen = localStorage.getItem('chatPopupOpen') === 'true';
 
-        function toggleChat() {
-            isOpen = !isOpen;
-            localStorage.setItem('chatPopupOpen', isOpen);
-            if (isOpen) {
-                chatPopup.classList.add('active');
-                // Auto-focus input when opening
-                setTimeout(() => chatInput.focus(), 300);
-            } else {
-                chatPopup.classList.remove('active');
-            }
-        }
+        // toggleChat function is now defined below with enhanced functionality
 
         // Restore popup state on page load
         function restorePopupState() {
@@ -579,10 +592,54 @@
             fileName.textContent = '';
         });
 
+        // Enhanced scroll functionality
+        function scrollToBottom() {
+            if (chatMessages) {
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+        }
+        
         // Auto-scroll to bottom on page load if there are messages
         document.addEventListener('DOMContentLoaded', function() {
-            setTimeout(() => chatMessages.scrollTop = chatMessages.scrollHeight, 100);
+            setTimeout(scrollToBottom, 100);
         });
+        
+        // Also scroll when window loads (for any dynamic content)
+        window.addEventListener('load', function() {
+            setTimeout(scrollToBottom, 200);
+        });
+        
+        // Scroll to bottom when chat is opened
+        function toggleChat() {
+            isOpen = !isOpen;
+            localStorage.setItem('chatPopupOpen', isOpen);
+            if (isOpen) {
+                chatPopup.classList.add('active');
+                // Auto-focus input and scroll to bottom when opening
+                setTimeout(() => {
+                    chatInput.focus();
+                    scrollToBottom();
+                }, 300);
+            } else {
+                chatPopup.classList.remove('active');
+            }
+        }
+        
+        // Observe changes in chat messages for auto-scroll
+        if (chatMessages) {
+            const observer = new MutationObserver((mutations) => {
+                mutations.forEach((mutation) => {
+                    if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+                        setTimeout(scrollToBottom, 50);
+                    }
+                });
+            });
+            
+            observer.observe(chatMessages, {
+                childList: true,
+                subtree: true
+            });
+        }
     </script>
 </body>
 </html>

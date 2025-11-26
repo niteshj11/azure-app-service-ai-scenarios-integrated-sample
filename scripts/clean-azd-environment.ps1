@@ -33,13 +33,21 @@ if ($currentConfig.defaults) {
     Write-Host "   ✓ No defaults to clear" -ForegroundColor Green
 }
 
-# 2. Remove all azd environments
-Write-Host "`n2. Removing azd environments..." -ForegroundColor Yellow
+# 2. Remove all azd environments and generated files
+Write-Host "`n2. Removing azd environments and generated files..." -ForegroundColor Yellow
 if (Test-Path ".azure") {
     Remove-Item -Path ".azure" -Recurse -Force -ErrorAction SilentlyContinue
     Write-Host "   ✓ Removed .azure directory" -ForegroundColor Green
 } else {
     Write-Host "   ✓ No .azure directory found" -ForegroundColor Green
+}
+
+# Remove generated bicepparam files
+if (Test-Path "infra\main.bicepparam") {
+    Remove-Item -Path "infra\main.bicepparam" -Force -ErrorAction SilentlyContinue
+    Write-Host "   ✓ Removed generated main.bicepparam file" -ForegroundColor Green
+} else {
+    Write-Host "   ✓ No generated bicepparam file found" -ForegroundColor Green
 }
 
 # 2b. Comprehensive cleanup (if enabled)

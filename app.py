@@ -61,17 +61,45 @@ def markdown_filter(text):
 @app.before_request
 def check_configuration():
     """Ensure Azure configuration is available and manage session size."""
-    # Clean up oversized sessions to prevent cookie warnings
+    # Enhanced session cleanup to prevent cookie size issues, especially for multimodal content
     try:
-        # Check if session is getting too large
+        # Check if session is getting too large (browser cookie limit ~4KB)
         session_size = len(str(session))
-        if session_size > 4000:  # Increased limit 
-            logger.warning(f"Large session detected ({session_size} bytes), cleaning up")
+        
+        # More aggressive cleanup for large sessions
+        if session_size > 3500:  # Lower threshold for earlier intervention
+            logger.warning(f"Large session detected ({session_size} bytes), performing cleanup")
             
-            # Only clear compressed conversation to free up space
-            # Keep the active conversation intact for user experience
-            session.pop('conversation_compressed', None)
-            session.modified = True
+            # Multi-level cleanup strategy
+            cleanup_performed = False
+            
+            # Level 1: Clear any temporary multimodal data first
+            if 'temp_upload_data' in session:
+                session.pop('temp_upload_data', None)
+                cleanup_performed = True
+                logger.info("Cleared temporary upload data from session")
+            
+            # Level 2: Clear compressed conversation backup
+            if session_size > 3000 and 'conversation_compressed' in session:
+                session.pop('conversation_compressed', None)
+                cleanup_performed = True
+                logger.info("Cleared compressed conversation from session")
+            
+            # Level 3: If still too large, keep only last 8 messages
+            if session_size > 2500:
+                from AIPlaygroundCode.utils.helpers import get_conversation_history, _compress_conversation
+                conversation = get_conversation_history()
+                if len(conversation) > 8:
+                    # Keep only last 8 messages (4 exchanges)
+                    conversation = conversation[-8:]
+                    session['conversation_compressed'] = _compress_conversation(conversation)
+                    cleanup_performed = True
+                    logger.info("Truncated conversation history to last 8 messages")
+            
+            if cleanup_performed:
+                session.modified = True
+                new_size = len(str(session))
+                logger.info(f"Session cleanup complete: {session_size} -> {new_size} bytes")
             
     except Exception as e:
         # Don't let session cleanup break the request

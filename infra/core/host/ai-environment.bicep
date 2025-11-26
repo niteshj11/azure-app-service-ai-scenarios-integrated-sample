@@ -9,7 +9,7 @@ param aiServicesName string
 @description('The AI Services model deployments.')
 param aiServiceModelDeployments array = []
 @description('The Application Insights connection name.')
-param appInsightConnectionName string
+param appInsightConnectionName string = 'appinsight-connection'
 @description('Enable multi-service AI capabilities for vision and audio')
 param enableMultiServiceAI bool = true
 param tags object = {}
@@ -60,6 +60,7 @@ module aiServices '../ai/cognitiveservices.bicep' = {
 }
 
 output id string = aiServices.outputs.id
+output resourceId string = aiServices.outputs.resourceId
 output endpoint string = aiServices.outputs.endpoint
 // AI Project outputs temporarily disabled
 // output projectId string = aiServices.outputs.projectId

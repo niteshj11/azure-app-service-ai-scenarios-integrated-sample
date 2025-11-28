@@ -90,8 +90,8 @@ param externalAzureAIEndpoint string = ''
 @allowed(['Microsoft', 'OpenAI'])
 param chatModelFormat string = 'OpenAI'
 
-@description('Name of the chat model to deploy (use gpt-4o for vision support)')
-param chatModelName string = 'gpt-4o'
+@description('Name of the chat model to deploy (use gpt-4o-mini for better availability)')
+param chatModelName string = 'gpt-4o-mini'
 
 @description('Version of the chat model to deploy')
 // See version availability in this table:

@@ -175,10 +175,10 @@ hooks:
               $chatModel = $output.ToString().Trim()
               Write-Host "✓ Found existing chat model config: $chatModel" -ForegroundColor Green
           } else {
-              $chatModel = Read-Host "💬 Chat Model: Enter model to deploy [gpt-4o-mini/gpt-4o/gpt-35-turbo]"
+              $chatModel = Read-Host "💬 Chat Model: Enter model to deploy [gpt-4o-mini/gpt-35-turbo] (recommended: gpt-4o-mini)"
               if ([string]::IsNullOrEmpty($chatModel)) {
-                  Write-Host "❌ Chat model name is required" -ForegroundColor Red
-                  exit 1
+                  $chatModel = "gpt-4o-mini"  # Default to most supported model
+                  Write-Host "✓ Using default chat model: $chatModel" -ForegroundColor Green
               }
               azd env set cChatModelName $chatModel
               Write-Host "✓ Set chat model: $chatModel" -ForegroundColor Green
@@ -199,7 +199,7 @@ hooks:
           }
           
           Write-Host ""
-          Write-Host "✅ New deployment parameters configured:" -ForegroundColor Green
+          Write-Host "✅ New deployment parameters collected:" -ForegroundColor Green
           Write-Host "   Setup: $setupChoice" -ForegroundColor Cyan
           Write-Host "   Chat Model: $chatModel" -ForegroundColor Cyan  
           Write-Host "   Audio Model: $audioModel" -ForegroundColor Cyan
@@ -230,6 +230,11 @@ hooks:
               azd env set eAILocation $aiLocation
               Write-Host "✓ Set AI location: $aiLocation" -ForegroundColor Green
           }
+          
+          # Now create the Bicep parameters file with the collected AI location
+          $bicepParamContent = "using './main.bicep'`n`nparam aSetupChoice = 'new'`nparam chatModelName = '$(azd env get-value cChatModelName)'`nparam audioModelName = '$(azd env get-value dAudioModelName)'`nparam aiLocation = '$aiLocation'"
+          Set-Content -Path "infra/main.bicepparam" -Value $bicepParamContent
+          Write-Host "📄 Created infra/main.bicepparam with AI location: $aiLocation" -ForegroundColor Cyan
       }
       
   postprovision:

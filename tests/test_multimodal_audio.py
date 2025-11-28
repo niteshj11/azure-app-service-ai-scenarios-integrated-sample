@@ -106,13 +106,13 @@ def test_audio_upload(base_url, basic_mode=False):
             filename = "test_audio.wav"
             content_type = "audio/wav"
         
-        # TechMart audio scenario from Manual Testing Guide
+        # Zava audio scenario from Manual Testing Guide
         audio_scenarios = [
             {
                 "message": "Transcribe this customer support call and provide a summary of the call along with required actions to be taken.",
                 "scenario": "Test 12: Audio Customer Support",
-                "expected_keywords": ["transcribe", "customer", "support", "call", "summary", "actions", "techmart", "service", "resolution", "follow-up", "escalate", "business"],
-                "validation_criteria": ["provides TechMart customer service context", "demonstrates business intelligence", "includes actionable recommendations", "shows professional customer resolution"]
+                "expected_keywords": ["transcribe", "customer", "support", "call", "summary", "actions", "zava", "service", "resolution", "follow-up", "escalate", "business"],
+                "validation_criteria": ["provides Zava customer service context", "demonstrates business intelligence", "includes actionable recommendations", "shows professional customer resolution"]
             }
         ]
         
@@ -172,7 +172,7 @@ def test_audio_upload(base_url, basic_mode=False):
                 # Got a direct response (not HTML)
                 ai_response = response.text[:500] + ("..." if len(response.text) > 500 else "")
             
-            # Perform relevance analysis for TechMart context
+            # Perform relevance analysis for Zava context
             expected_keywords = scenario_data['expected_keywords']
             response_lower = ai_response.lower()
             found_keywords = [keyword for keyword in expected_keywords if keyword in response_lower]
@@ -211,7 +211,7 @@ def test_audio_upload(base_url, basic_mode=False):
             analysis_text += f"• Found Keywords: {', '.join(found_keywords)}\n"
             analysis_text += f"• Transcription Indicators: {', '.join(found_transcription_indicators)}\n"
             analysis_text += f"• Relevance Score: {relevance_score:.1f}%\n"
-            analysis_text += f"• TechMart Context: {'Strong' if relevance_score >= 50 else 'Moderate' if relevance_score >= 30 else 'Weak'}"
+            analysis_text += f"• Zava Context: {'Strong' if relevance_score >= 50 else 'Moderate' if relevance_score >= 30 else 'Weak'}"
             
             enhanced_response = ai_response + analysis_text
             

@@ -230,7 +230,7 @@ module ai 'core/host/ai-environment.bicep' = if (shouldProvisionNewAI) {
 //   }
 // }
 
-// App Service Plan for hosting the TechMart AI chatbot
+// App Service Plan for hosting the Zava AI chatbot
 module appServicePlan 'core/host/appserviceplan.bicep' = {
   name: 'appserviceplan'
   params: {
@@ -246,7 +246,7 @@ module appServicePlan 'core/host/appserviceplan.bicep' = {
   }
 }
 
-// STEP 2: TechMart AI App Service deployment
+// STEP 2: Zava AI App Service deployment
 module api 'api.bicep' = {
   name: 'api'
   params: {

@@ -2,7 +2,7 @@
 
 ## 📋 Overview
 
-The TechMart AI Chatbot uses AIPlaygroundCode's intelligent configuration system that automatically detects the environment (local vs Azure) and manages settings appropriately.
+The Zava AI Chatbot uses AIPlaygroundCode's intelligent configuration system that automatically detects the environment (local vs Azure) and manages settings appropriately.
 
 ## 🚀 Quick Setup (Minimum Configuration)
 

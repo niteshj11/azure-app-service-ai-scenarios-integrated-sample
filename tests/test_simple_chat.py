@@ -26,8 +26,8 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from test_config import BASE_URL, AZURE_URL, TESTING_LOCAL, TESTING_AZURE
 
 def test_simple_chat(base_url, report_generator=None, basic_mode=False):
-    """Test TechMart retail chat scenarios with real AI responses"""
-    print(f"\n🧪 Testing TechMart Simple Chat - {base_url}")
+    """Test Zava retail chat scenarios with real AI responses"""
+    print(f"\n🧪 Testing Zava Simple Chat - {base_url}")
     if basic_mode:
         print("   🚀 Basic Mode: Testing only first scenario")
     
@@ -36,27 +36,27 @@ def test_simple_chat(base_url, report_generator=None, basic_mode=False):
     
     try:
         # Test 1: Get initial page
-        print("1. Loading TechMart chat interface...")
+        print("1. Loading Zava chat interface...")
         response = session.get(base_url, timeout=30)
         
         if response.status_code != 200:
             raise Exception(f"Failed to load page: {response.status_code}")
         
-        if "TechMart" not in response.text:
-            raise Exception("TechMart branding not found on page")
+        if "Zava" not in response.text:
+            raise Exception("Zava branding not found on page")
         
-        print("   ✅ TechMart chat interface loaded successfully")
+        print("   ✅ Zava chat interface loaded successfully")
         
-        # Test 2: TechMart retail scenarios
-        print("2. Testing TechMart retail chat scenarios...")
+        # Test 2: Zava retail scenarios
+        print("2. Testing Zava retail chat scenarios...")
         
-        # Define TechMart retail scenarios from Manual Testing Guide
+        # Define Zava retail scenarios from Manual Testing Guide
         retail_scenarios = [
             {
                 "message": "Who are you and what can you help with?",
                 "scenario": "Test 1: AI Assistant Introduction",
-                "expected_keywords": ["techmart", "enterprise", "assistant", "customer", "service", "business", "intelligence", "retailer", "electronics", "products", "support", "professional"],
-                "validation_criteria": ["identifies as TechMart Enterprise AI Assistant", "mentions customer service role", "lists business intelligence capabilities"]
+                "expected_keywords": ["zava", "enterprise", "assistant", "customer", "service", "business", "intelligence", "retailer", "electronics", "products", "support", "professional"],
+                "validation_criteria": ["identifies as Zava Enterprise AI Assistant", "mentions customer service role", "lists business intelligence capabilities"]
             },
             {
                 "message": "Tell me about features and price for Pro Gaming X1",
@@ -65,9 +65,9 @@ def test_simple_chat(base_url, report_generator=None, basic_mode=False):
                 "validation_criteria": ["addresses Pro Gaming X1 specifically", "mentions $1699 price", "lists RTX 4070 and Intel i7 specs"]
             },
             {
-                "message": "What is TechMart's return policy and how do I process a customer refund?",
+                "message": "What is Zava's return policy and how do I process a customer refund?",
                 "scenario": "Test 3: Customer Service Policy Question",
-                "expected_keywords": ["return", "policy", "30", "day", "refund", "receipt", "customer", "service", "process", "techmart", "portal", "1-800"],
+                "expected_keywords": ["return", "policy", "30", "day", "refund", "receipt", "customer", "service", "process", "zava", "portal", "1-800"],
                 "validation_criteria": ["explains 30-day return policy", "mentions receipt requirement", "provides customer service contact"]
             }
         ]
@@ -103,7 +103,7 @@ def test_simple_chat(base_url, report_generator=None, basic_mode=False):
                 # Fallback: look for any response content
                 chat_container = soup.find('div', class_='chat-container') or soup.find('div', class_='chat-popup-messages')
                 if chat_container:
-                    ai_response = f"Response received in chat interface. UI shows active conversation with TechMart branding."
+                    ai_response = f"Response received in chat interface. UI shows active conversation with Zava branding."
                 else:
                     ai_response = "No response content found - possible UI structure change"
             
@@ -129,17 +129,17 @@ def test_simple_chat(base_url, report_generator=None, basic_mode=False):
             analysis_text += f"• Expected Keywords: {', '.join(expected_keywords)}\n"
             analysis_text += f"• Found Keywords: {', '.join(found_keywords)}\n"
             analysis_text += f"• Relevance Score: {relevance_score:.1f}%\n"
-            analysis_text += f"• Analysis: {'TechMart retail context well understood' if relevance_score >= 60 else 'Partial TechMart context' if relevance_score >= 30 else 'Limited TechMart context'}"
+            analysis_text += f"• Analysis: {'Zava retail context well understood' if relevance_score >= 60 else 'Partial Zava context' if relevance_score >= 30 else 'Limited Zava context'}"
             
             enhanced_response = ai_response + analysis_text
             
             # Add to report
             if report_generator:
                 report_generator.add_test_result(
-                    scenario=f"TechMart Chat: {scenario_data['scenario']}",
+                    scenario=f"Zava Chat: {scenario_data['scenario']}",
                     input_data={
                         "message": scenario_data['message'], 
-                        "test_type": "techmart_retail_chat",
+                        "test_type": "zava_retail_chat",
                         "scenario": scenario_data['scenario'],
                         "expected_keywords": expected_keywords
                     },
@@ -152,20 +152,20 @@ def test_simple_chat(base_url, report_generator=None, basic_mode=False):
             
             time.sleep(3)  # Brief delay between messages
         
-        print("3. Verifying TechMart conversation state...")
+        print("3. Verifying Zava conversation state...")
         
         # Get final conversation state
         final_response = session.get(base_url, timeout=30)
         
-        # Check for TechMart conversation elements
-        if "chat-container" in final_response.text and "TechMart" in final_response.text:
-            print("   ✅ TechMart conversation container and branding verified")
+        # Check for Zava conversation elements
+        if "chat-container" in final_response.text and "Zava" in final_response.text:
+            print("   ✅ Zava conversation container and branding verified")
         elif "chat-container" in final_response.text:
-            print("   ⚠️ Conversation container found but TechMart branding unclear")
+            print("   ⚠️ Conversation container found but Zava branding unclear")
         else:
             print("   ⚠️ Conversation container not found")
         
-        print("   🎯 TechMart retail chat scenarios completed successfully")
+        print("   🎯 Zava retail chat scenarios completed successfully")
         
         return True
         

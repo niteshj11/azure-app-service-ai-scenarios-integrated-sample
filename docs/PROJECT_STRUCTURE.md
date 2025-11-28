@@ -1,10 +1,10 @@
-# 🏗️ TechMart AI Chatbot - Project Structure
+# 🏗️ Zava AI Chatbot - Project Structure
 
 > **Complete guide to understanding the clean, optimized codebase structure**
 
 ## 📋 Overview
 
-This document provides a comprehensive overview of the TechMart AI Chatbot project structure after cleanup and optimization. The codebase is organized with **AIPlaygroundCode** as a portable integration package and root-level deployment files.
+This document provides a comprehensive overview of the Zava AI Chatbot project structure after cleanup and optimization. The codebase is organized with **AIPlaygroundCode** as a portable integration package and root-level deployment files.
 
 ## 📁 Root Directory Files
 
@@ -37,7 +37,7 @@ This document provides a comprehensive overview of the TechMart AI Chatbot proje
 ```
 � AIPlaygroundCode/scenarios/
 ├── 📄 __init__.py           # Package initialization for AI scenario handlers
-├── 📄 chat.py               # Basic conversational AI with TechMart retail context
+├── 📄 chat.py               # Basic conversational AI with Zava retail context
 ├── � reasoning.py          # Advanced problem-solving with chain-of-thought capabilities
 ├── 📄 structured_output.py  # JSON formatted responses for system integration
 └── 📄 multimodal.py         # Image analysis and audio transcription functionality
@@ -55,7 +55,7 @@ This document provides a comprehensive overview of the TechMart AI Chatbot proje
 ```
 📁 AIPlaygroundCode/templates/
 ├── 📄 popup.html            # Main popup chat interface with file upload support for multimodal scenarios
-├── 📄 retail_home.html      # TechMart retail interface with localStorage popup persistence  
+├── 📄 retail_home.html      # Zava retail interface with localStorage popup persistence  
 ├── 📄 settings.html         # Configuration management page for Azure AI credentials
 ├── 📄 config_error.html     # User-friendly configuration error page with troubleshooting
 ├── 📄 404.html              # Custom 404 error page
@@ -75,7 +75,7 @@ This document provides a comprehensive overview of the TechMart AI Chatbot proje
 ```
 📁 tests/
 ├── 📄 test_config.py             # URL configuration for local/Azure testing (ESSENTIAL - used by all tests)
-├── 📄 test_simple_chat.py        # Basic conversation testing with TechMart scenarios
+├── 📄 test_simple_chat.py        # Basic conversation testing with Zava scenarios
 ├── 📄 test_reasoning_scenario.py # Advanced reasoning validation with problem-solving tests
 ├── 📄 test_structured_output.py  # JSON output format testing with schema validation
 ├── 📄 test_multimodal_image.py   # Image processing validation with product analysis

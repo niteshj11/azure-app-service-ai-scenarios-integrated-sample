@@ -2,7 +2,7 @@
 # Project Cleanup Automation Script
 # =====================================================================================
 # Purpose: Automate the cleanup of development projects for production deployment
-# Based on: TechMart AI Chatbot cleanup experience
+# Based on: Zava AI Chatbot cleanup experience
 # Usage: .\scripts\cleanup_project.ps1 -Phase All -Confirm:$false
 # =====================================================================================
 

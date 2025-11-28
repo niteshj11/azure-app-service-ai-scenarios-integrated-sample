@@ -34,40 +34,40 @@ def create_test_image_data():
     return png_data
 
 def test_image_upload(base_url, report_generator=None, basic_mode=False):
-    """Test TechMart image analysis with laptop products"""
-    print(f"\n🖼️ Testing TechMart Image Analysis - {base_url} ({'Basic Mode' if basic_mode else 'Full Mode'})")
+    """Test Zava image analysis with laptop products"""
+    print(f"\n🖼️ Testing Zava Image Analysis - {base_url} ({'Basic Mode' if basic_mode else 'Full Mode'})")
     
     session = requests.Session()
     environment = "local" if "127.0.0.1" in base_url else "azure"
     
     try:
         # Test 1: Get initial page
-        print("1. Loading TechMart chat interface...")
+        print("1. Loading Zava chat interface...")
         response = session.get(base_url, timeout=30)
         
         if response.status_code != 200:
             raise Exception(f"Failed to load page: {response.status_code}")
         
-        print("   ✅ TechMart interface loaded successfully")
+        print("   ✅ Zava interface loaded successfully")
         
-        # Test 2: TechMart product image scenarios
-        print("2. Testing TechMart product image analysis...")
+        # Test 2: Zava product image scenarios
+        print("2. Testing Zava product image analysis...")
         
-        # Define TechMart image scenarios from Manual Testing Guide
+        # Define Zava image scenarios from Manual Testing Guide
         laptop_scenarios = [
             {
                 "image_file": "tests/test_inputs/laptop.jpeg",
                 "message": "Analyze this product image and provide detailed specifications.",
                 "scenario": "Test 10: Product Image Analysis",
-                "expected_keywords": ["image", "analysis", "product", "specifications", "techmart", "electronics", "features", "visual", "details", "expert", "catalog"],
-                "validation_criteria": ["confirms image received", "provides TechMart product expertise", "lists detailed specifications", "demonstrates product knowledge"]
+                "expected_keywords": ["image", "analysis", "product", "specifications", "zava", "electronics", "features", "visual", "details", "expert", "catalog"],
+                "validation_criteria": ["confirms image received", "provides Zava product expertise", "lists detailed specifications", "demonstrates product knowledge"]
             },
             {
                 "image_file": "tests/test_inputs/laptop damaged.jpeg", 
                 "message": "This customer sent an image of a damaged laptop. Verify and assess the damage and suggest what should our return/repair process be?",
                 "scenario": "Test 11: Customer Service Image Issue",
-                "expected_keywords": ["damage", "verify", "assess", "return", "repair", "process", "customer", "service", "techmart", "30", "day", "policy", "resolution"],
-                "validation_criteria": ["verifies damage using TechMart expertise", "references 30-day return policy", "provides customer service resolution", "suggests appropriate TechMart process"]
+                "expected_keywords": ["damage", "verify", "assess", "return", "repair", "process", "customer", "service", "zava", "30", "day", "policy", "resolution"],
+                "validation_criteria": ["verifies damage using Zava expertise", "references 30-day return policy", "provides customer service resolution", "suggests appropriate Zava process"]
             }
         ]
         
@@ -126,7 +126,7 @@ def test_image_upload(base_url, report_generator=None, basic_mode=False):
                 # No AI response found at all
                 ai_response = "ERROR: No AI response found. Multimodal image processing failed completely."
             
-            # Perform relevance analysis for TechMart context
+            # Perform relevance analysis for Zava context
             expected_keywords = scenario_data['expected_keywords']
             response_lower = ai_response.lower()
             found_keywords = [keyword for keyword in expected_keywords if keyword in response_lower]
@@ -157,7 +157,7 @@ def test_image_upload(base_url, report_generator=None, basic_mode=False):
             analysis_text += f"• Found Keywords: {', '.join(found_keywords)}\n"
             analysis_text += f"• Image Indicators: {', '.join(found_image_indicators)}\n"
             analysis_text += f"• Relevance Score: {relevance_score:.1f}%\n"
-            analysis_text += f"• TechMart Context: {'Strong' if relevance_score >= 50 else 'Moderate' if relevance_score >= 30 else 'Weak'}"
+            analysis_text += f"• Zava Context: {'Strong' if relevance_score >= 50 else 'Moderate' if relevance_score >= 30 else 'Weak'}"
             
             enhanced_response = ai_response + analysis_text
             
@@ -165,11 +165,11 @@ def test_image_upload(base_url, report_generator=None, basic_mode=False):
             if report_generator:
                 media_files = [selected_image] if selected_image and os.path.exists(selected_image) else []
                 report_generator.add_test_result(
-                    scenario=f"TechMart Image: {scenario_data['scenario']}",
+                    scenario=f"Zava Image: {scenario_data['scenario']}",
                     input_data={
                         "message": scenario_data['message'],
                         "image_file": filename,
-                        "test_type": "techmart_multimodal_image",
+                        "test_type": "zava_multimodal_image",
                         "scenario": scenario_data['scenario'],
                         "expected_keywords": expected_keywords
                     },
@@ -183,10 +183,10 @@ def test_image_upload(base_url, report_generator=None, basic_mode=False):
             
             time.sleep(4)  # Brief delay between uploads
         
-        # Test 3: TechMart catalog integration test
-        print("3. Testing TechMart catalog integration...")
+        # Test 3: Zava catalog integration test
+        print("3. Testing Zava catalog integration...")
         
-        catalog_message = "I'm uploading a product image for TechMart's catalog. Please extract key information that would be useful for our product database: brand, model, key features, and suggested category."
+        catalog_message = "I'm uploading a product image for Zava's catalog. Please extract key information that would be useful for our product database: brand, model, key features, and suggested category."
         
         # Use the last processed image
         if selected_image and os.path.exists(selected_image):
@@ -204,17 +204,17 @@ def test_image_upload(base_url, report_generator=None, basic_mode=False):
         
         response = session.post(base_url, files=files, data=data, timeout=60)
         
-        # Check for TechMart catalog integration
-        catalog_keywords = ['brand', 'model', 'feature', 'category', 'product', 'database', 'techmart', 'catalog']
+        # Check for Zava catalog integration
+        catalog_keywords = ['brand', 'model', 'feature', 'category', 'product', 'database', 'zava', 'catalog']
         response_lower = response.text.lower()
         found_catalog_keywords = [keyword for keyword in catalog_keywords if keyword in response_lower]
         
         if len(found_catalog_keywords) >= 4:
-            print(f"   ✅ TechMart catalog integration functional ({len(found_catalog_keywords)}/8 keywords)")
+            print(f"   ✅ Zava catalog integration functional ({len(found_catalog_keywords)}/8 keywords)")
         else:
-            print(f"   ⚠️ TechMart catalog integration limited ({len(found_catalog_keywords)}/8 keywords)")
+            print(f"   ⚠️ Zava catalog integration limited ({len(found_catalog_keywords)}/8 keywords)")
         
-        print("   🎯 TechMart multimodal image testing completed successfully")
+        print("   🎯 Zava multimodal image testing completed successfully")
         
         return True
         

@@ -1,6 +1,6 @@
-# 🧪 TechMart AI Chatbot - Testing Guide
+# 🧪 Zava AI Chatbot - Testing Guide
 
-This guide covers testing the TechMart AI Chatbot both locally and on Azure, with manual testing procedures and automated test scripts.
+This guide covers testing the Zava AI Chatbot both locally and on Azure, with manual testing procedures and automated test scripts.
 
 ## 🏠 Local Testing
 
@@ -236,7 +236,7 @@ Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$pwd'; & '.\.
 **Option B: Run in Current Terminal (Will Block)**
 ```powershell
 # Navigate to project directory first
-cd "path\to\your\TechMart-AI-Chatbot"
+cd "path\to\your\Zava-AI-Chatbot"
 
 # Run the Flask app (this will block the terminal)
 python app.py
@@ -251,7 +251,7 @@ python -m flask run --host=0.0.0.0 --port=5000
 #### 2. Verify Application is Running
 - Flask app should show: `Running on http://127.0.0.1:5000`
 - Open browser to: http://127.0.0.1:5000
-- You should see the TechMart AI Chatbot interface
+- You should see the Zava AI Chatbot interface
 
 #### 3. Configure Azure AI (If Not Already Done)
 If you see "Configuration Error" or need to set up Azure AI:
@@ -275,7 +275,7 @@ If you see "Configuration Error" or need to set up Azure AI:
 3. **Expected**: Bot responds with helpful greeting
 4. **Verify**: Response is relevant and properly formatted
 
-### Test 2: TechMart Retail Scenarios
+### Test 2: Zava Retail Scenarios
 **Purpose**: Test domain-specific retail knowledge
 
 1. **Product Inquiry**: "What laptops do you have available?"

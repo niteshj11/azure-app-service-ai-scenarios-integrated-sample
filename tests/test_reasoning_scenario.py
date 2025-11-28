@@ -39,25 +39,25 @@ def test_reasoning_scenario(base_url, report_generator=None, basic_mode=False):
         # Test 2: Complex reasoning scenarios
         print("2. Testing complex reasoning scenarios...")
         
-        # TechMart reasoning scenarios from Manual Testing Guide
+        # Zava reasoning scenarios from Manual Testing Guide
         reasoning_prompts = [
             {
-                "message": "TechMart's sales have dropped 15% this quarter. Walk me through a systematic approach to identify root causes and develop an action plan.",
+                "message": "Zava's sales have dropped 15% this quarter. Walk me through a systematic approach to identify root causes and develop an action plan.",
                 "scenario": "Test 4: Complex Business Problem Analysis",
-                "expected_keywords": ["techmart", "enterprise", "sales", "15%", "quarter", "systematic", "analysis", "root", "causes", "action", "plan", "business", "intelligence", "retailer", "revenue"],
-                "validation_criteria": ["demonstrates TechMart business context", "shows enterprise-level analysis", "provides business intelligence insights", "includes actionable recommendations"]
+                "expected_keywords": ["zava", "enterprise", "sales", "15%", "quarter", "systematic", "analysis", "root", "causes", "action", "plan", "business", "intelligence", "retailer", "revenue"],
+                "validation_criteria": ["demonstrates Zava business context", "shows enterprise-level analysis", "provides business intelligence insights", "includes actionable recommendations"]
             },
             {
-                "message": "Should TechMart expand into cloud services? Analyze the pros, cons, market factors, and implementation challenges.",
+                "message": "Should Zava expand into cloud services? Analyze the pros, cons, market factors, and implementation challenges.",
                 "scenario": "Test 5: Strategic Decision Making",
-                "expected_keywords": ["techmart", "expand", "cloud", "services", "pros", "cons", "market", "factors", "implementation", "retailer", "enterprise", "strategic", "business", "omnichannel"],
-                "validation_criteria": ["considers TechMart's retail context", "analyzes enterprise implications", "addresses omnichannel strategy", "provides strategic business insights"]
+                "expected_keywords": ["zava", "expand", "cloud", "services", "pros", "cons", "market", "factors", "implementation", "retailer", "enterprise", "strategic", "business", "omnichannel"],
+                "validation_criteria": ["considers Zava's retail context", "analyzes enterprise implications", "addresses omnichannel strategy", "provides strategic business insights"]
             },
             {
-                "message": "Compare TechMart's positioning against major competitors. What strategic advantages can we leverage and what gaps need addressing?",
+                "message": "Compare Zava's positioning against major competitors. What strategic advantages can we leverage and what gaps need addressing?",
                 "scenario": "Test 6: Competitive Analysis Reasoning",
-                "expected_keywords": ["techmart", "positioning", "competitors", "strategic", "advantages", "leverage", "gaps", "retailer", "enterprise", "500", "stores", "50m", "customers", "5b", "revenue"],
-                "validation_criteria": ["references TechMart's scale (500+ stores, 50M+ customers)", "demonstrates competitive intelligence", "leverages enterprise context", "provides strategic recommendations"]
+                "expected_keywords": ["zava", "positioning", "competitors", "strategic", "advantages", "leverage", "gaps", "retailer", "enterprise", "500", "stores", "50m", "customers", "5b", "revenue"],
+                "validation_criteria": ["references Zava's scale (500+ stores, 50M+ customers)", "demonstrates competitive intelligence", "leverages enterprise context", "provides strategic recommendations"]
             }
         ]
         
@@ -91,7 +91,7 @@ def test_reasoning_scenario(base_url, report_generator=None, basic_mode=False):
                 # No real AI response found
                 ai_response = f"ERROR: No AI reasoning response found for {prompt_data['scenario']}. Interface structure may have changed."
             
-            # Perform relevance analysis for TechMart reasoning
+            # Perform relevance analysis for Zava reasoning
             expected_keywords = prompt_data['expected_keywords']
             response_lower = ai_response.lower()
             found_keywords = [keyword for keyword in expected_keywords if keyword in response_lower]
@@ -118,7 +118,7 @@ def test_reasoning_scenario(base_url, report_generator=None, basic_mode=False):
             analysis_text += f"• Analytical Indicators: {', '.join(found_analytical)}\n"
             analysis_text += f"• Relevance Score: {relevance_score:.1f}%\n"
             analysis_text += f"• Reasoning Quality: {'Strong' if relevance_score >= 50 else 'Moderate' if relevance_score >= 30 else 'Weak'}\n"
-            analysis_text += f"• Analysis: TechMart business reasoning {'well structured' if relevance_score >= 50 else 'partially structured' if relevance_score >= 30 else 'needs improvement'}"
+            analysis_text += f"• Analysis: Zava business reasoning {'well structured' if relevance_score >= 50 else 'partially structured' if relevance_score >= 30 else 'needs improvement'}"
             
             enhanced_response = ai_response + analysis_text
             
@@ -135,11 +135,11 @@ def test_reasoning_scenario(base_url, report_generator=None, basic_mode=False):
             # Add to report
             if report_generator:
                 report_generator.add_test_result(
-                    scenario=f"TechMart Reasoning: {prompt_data['scenario']}",
+                    scenario=f"Zava Reasoning: {prompt_data['scenario']}",
                     input_data={
                         "message": prompt_data['message'],
                         "scenario_type": prompt_data['scenario'],
-                        "test_type": "techmart_complex_reasoning",
+                        "test_type": "zava_complex_reasoning",
                         "expected_keywords": expected_keywords,
                         "validation_criteria": prompt_data['validation_criteria']
                     },
@@ -165,7 +165,7 @@ def test_reasoning_scenario(base_url, report_generator=None, basic_mode=False):
                 # Create new session for this test to avoid header accumulation
                 session = requests.Session()
             
-            chain_message = "Walk me through the decision process: TechMart wants to expand to a new city. We have data showing 50,000 potential customers, average spend $200/year, 15% market capture expected. Fixed costs would be $800K/year, variable costs 60% of revenue. Break down the financial projections and tell me if this expansion makes sense."
+            chain_message = "Walk me through the decision process: Zava wants to expand to a new city. We have data showing 50,000 potential customers, average spend $200/year, 15% market capture expected. Fixed costs would be $800K/year, variable costs 60% of revenue. Break down the financial projections and tell me if this expansion makes sense."
             
             data = {'message': chain_message}
             response = session.post(base_url, data=data, timeout=60)
@@ -174,7 +174,7 @@ def test_reasoning_scenario(base_url, report_generator=None, basic_mode=False):
                 # If we still get 431, try with an even shorter message
                 if response.status_code == 431:
                     print("   ⚠️ Request too large, trying simplified version...")
-                    simplified_message = "Analyze TechMart expansion: 50K customers, $200/year spend, 15% capture rate, $800K fixed costs, 60% variable costs. Is this profitable?"
+                    simplified_message = "Analyze Zava expansion: 50K customers, $200/year spend, 15% capture rate, $800K fixed costs, 60% variable costs. Is this profitable?"
                     data = {'message': simplified_message}
                     response = session.post(base_url, data=data, timeout=60)
                     

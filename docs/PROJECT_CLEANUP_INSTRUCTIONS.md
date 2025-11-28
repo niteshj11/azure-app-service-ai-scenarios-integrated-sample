@@ -4,7 +4,7 @@
 
 ## 📋 Overview
 
-This document provides instructions for cleaning up a TechMart AI Chatbot project built on the **AIPlaygroundCode** architecture, removing development artifacts, and preparing it for production deployment.
+This document provides instructions for cleaning up a Zava AI Chatbot project built on the **AIPlaygroundCode** architecture, removing development artifacts, and preparing it for production deployment.
 
 ## 🎯 Cleanup Objectives
 

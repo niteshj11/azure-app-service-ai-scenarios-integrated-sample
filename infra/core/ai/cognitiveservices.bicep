@@ -92,8 +92,8 @@ resource appInsightConnection 'Microsoft.CognitiveServices/accounts/connections@
 //     type: 'SystemAssigned'
 //   }
 //   properties: {
-//     description: 'AI Project for TechMart Chatbot'
-//     displayName: 'TechMart AI Project'
+//     description: 'AI Project for Zava Chatbot'
+//     displayName: 'Zava AI Project'
 //   }
 // }
 

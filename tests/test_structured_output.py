@@ -37,25 +37,25 @@ def test_structured_output(base_url, report_generator=None, basic_mode=False):
         # Test 2: JSON structure requests
         print("2. Testing JSON output generation...")
         
-        # TechMart structured output scenarios from Manual Testing Guide
+        # Zava structured output scenarios from Manual Testing Guide
         json_requests = [
             {
-                "message": "Generate a complete JSON product catalog entry for the TechMart UltraGame Elite 15 including all technical specifications and metadata.",
+                "message": "Generate a complete JSON product catalog entry for the Zava UltraGame Elite 15 including all technical specifications and metadata.",
                 "scenario": "Test 7: Product Catalog JSON Generation",
-                "expected_keywords": ["json", "ultragame", "elite", "15", "1899", "rtx", "4070", "ti", "amd", "ryzen", "9", "7900hx", "32gb", "ram", "1tb", "ssd", "techmart", "gaming"],
+                "expected_keywords": ["json", "ultragame", "elite", "15", "1899", "rtx", "4070", "ti", "amd", "ryzen", "9", "7900hx", "32gb", "ram", "1tb", "ssd", "zava", "gaming"],
                 "validation_criteria": ["response contains valid JSON", "includes UltraGame Elite 15 specs", "mentions $1899 price", "contains RTX 4070 Ti and AMD Ryzen specifications"]
             },
             {
                 "message": "Create a structured customer data format for John Smith, a business client who purchased 5 laptops, needs support contact, and has premium service plan.",
                 "scenario": "Test 8: Customer Data Structure",
-                "expected_keywords": ["customer", "data", "john", "smith", "business", "client", "laptops", "support", "service", "plan", "techmart", "enterprise", "contact"],
-                "validation_criteria": ["customer data properly structured", "purchase details included", "TechMart enterprise context", "contact information structured"]
+                "expected_keywords": ["customer", "data", "john", "smith", "business", "client", "laptops", "support", "service", "plan", "zava", "enterprise", "contact"],
+                "validation_criteria": ["customer data properly structured", "purchase details included", "Zava enterprise context", "contact information structured"]
             },
             {
-                "message": "Design a structured inventory report format showing current stock levels, reorder points, and supplier information for TechMart's laptop category.",
+                "message": "Design a structured inventory report format showing current stock levels, reorder points, and supplier information for Zava's laptop category.",
                 "scenario": "Test 9: Inventory Report Structure",
-                "expected_keywords": ["inventory", "report", "stock", "levels", "reorder", "points", "supplier", "techmart", "laptop", "sku", "operations", "management"],
-                "validation_criteria": ["report structure defined", "stock level fields included", "TechMart operations context", "supplier information structured"]
+                "expected_keywords": ["inventory", "report", "stock", "levels", "reorder", "points", "supplier", "zava", "laptop", "sku", "operations", "management"],
+                "validation_criteria": ["report structure defined", "stock level fields included", "Zava operations context", "supplier information structured"]
             }
         ]
         
@@ -90,7 +90,7 @@ def test_structured_output(base_url, report_generator=None, basic_mode=False):
                 # No real AI response found
                 ai_response = f"ERROR: No AI structured output response found for {request_data['scenario']}. Interface structure may have changed."
             
-            # Perform relevance analysis for TechMart structured output
+            # Perform relevance analysis for Zava structured output
             expected_keywords = request_data['expected_keywords']
             response_lower = ai_response.lower()
             found_keywords = [keyword for keyword in expected_keywords if keyword in response_lower]
@@ -123,11 +123,11 @@ def test_structured_output(base_url, report_generator=None, basic_mode=False):
             # Add to report
             if report_generator:
                 report_generator.add_test_result(
-                    scenario=f"TechMart Structured: {request_data['scenario']}",
+                    scenario=f"Zava Structured: {request_data['scenario']}",
                     input_data={
                         "message": request_data['message'],
                         "scenario_type": request_data['scenario'],
-                        "test_type": "techmart_structured_output",
+                        "test_type": "zava_structured_output",
                         "expected_keywords": expected_keywords,
                         "validation_criteria": request_data['validation_criteria']
                     },
@@ -145,7 +145,7 @@ def test_structured_output(base_url, report_generator=None, basic_mode=False):
         
         table_requests = [
             {
-                "message": "Create a comparison table of TechMart's 3 service tiers: Basic ($50/month), Professional ($150/month), Enterprise ($400/month). Include features, support level, and limits for each tier. Format as a clear table.",
+                "message": "Create a comparison table of Zava's 3 service tiers: Basic ($50/month), Professional ($150/month), Enterprise ($400/month). Include features, support level, and limits for each tier. Format as a clear table.",
                 "indicators": ["basic", "professional", "enterprise", "month", "features", "support", "|", "-"]
             },
             {
@@ -177,7 +177,7 @@ def test_structured_output(base_url, report_generator=None, basic_mode=False):
         # Test 4: List format requests
         print("4. Testing list format generation...")
         
-        list_message = "Create a numbered action plan for implementing a new customer loyalty program at TechMart. Include 8 specific steps with clear priorities and timelines."
+        list_message = "Create a numbered action plan for implementing a new customer loyalty program at Zava. Include 8 specific steps with clear priorities and timelines."
         
         data = {'message': list_message}
         response = session.post(base_url, data=data, timeout=45)
